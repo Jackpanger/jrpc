@@ -8,6 +8,18 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
     <artifactId>jrpc-core</artifactId>
-    <name>Archetype - jrpc-core</name>
-    <url>http://maven.apache.org</url>
+    <dependencies>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
+    </dependencies>
 </project>
