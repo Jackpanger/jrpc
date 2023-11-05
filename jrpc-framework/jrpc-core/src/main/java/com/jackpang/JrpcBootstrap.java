@@ -1,9 +1,23 @@
 package com.jackpang;
 
+import com.jackpang.discovery.Registry;
+import com.jackpang.discovery.RegistryConfig;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.*;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
 import lombok.extern.slf4j.Slf4j;
 
+import java.net.InetSocketAddress;
+import java.nio.charset.Charset;
+import java.util.HashMap;
 import java.util.List;
-import java.util.logging.Handler;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * description: JrpcBootStrap
@@ -16,7 +30,23 @@ public class JrpcBootstrap {
 
 
     // JrpcBootstrap is a singleton class, so each application has only one instance.
-    private static JrpcBootstrap jrpcBootstrap = new JrpcBootstrap();
+    private static final JrpcBootstrap jrpcBootstrap = new JrpcBootstrap();
+
+    // declare basic configuration
+    private String appName = "default";
+    private RegistryConfig registryConfig;
+    private ProtocolConfig protocolConfig;
+    private int port = 8088;
+    private Registry registry;
+
+    // connection cache
+    public static final Map<InetSocketAddress, Channel> CHANNEL_CACHE = new ConcurrentHashMap<>(16);
+
+    // record the service published by the provider
+    private static final Map<String, ServiceConfig<?>> SERVERS_LIST = new ConcurrentHashMap<>(16);
+
+    // global pending completable future
+    public static final Map<Long, CompletableFuture<Object>> PENDING_REQUEST = new ConcurrentHashMap<>(128);
 
     private JrpcBootstrap() {
         // Initialization when constructing the bootstrap.
@@ -33,6 +63,7 @@ public class JrpcBootstrap {
      * @return this JrpcBootstrap instance
      */
     public JrpcBootstrap application(String appName) {
+        this.appName = appName;
         return this;
     }
 
@@ -42,6 +73,7 @@ public class JrpcBootstrap {
      * @return this JrpcBootstrap instance
      */
     public JrpcBootstrap registry(RegistryConfig registryConfig) {
+        this.registry = registryConfig.getRegistry();
         return this;
     }
 
@@ -52,8 +84,9 @@ public class JrpcBootstrap {
      * @return this JrpcBootstrap instance
      */
     public JrpcBootstrap protocol(ProtocolConfig protocolConfig) {
-        if (log.isDebugEnabled()){
-            log.debug("Current protocolConfig:{}", protocolConfig.toString()+"protocol");
+        this.protocolConfig = protocolConfig;
+        if (log.isDebugEnabled()) {
+            log.debug("Current protocolConfig:{}", protocolConfig.toString() + "protocol");
         }
         return this;
     }
@@ -69,9 +102,9 @@ public class JrpcBootstrap {
      * @return this JrpcBootstrap instance
      */
     public JrpcBootstrap publish(ServiceConfig<?> service) {
-        if (log.isDebugEnabled()){
-            log.debug("Service is published:{}", service.toString());
-        }
+        // service node
+        registry.register(service);
+        SERVERS_LIST.put(service.getInterface().getName(), service);
         return this;
     }
 
@@ -82,6 +115,7 @@ public class JrpcBootstrap {
      * @return this JrpcBootstrap instance
      */
     public JrpcBootstrap publish(List<ServiceConfig<?>> service) {
+        service.forEach(this::publish);
         return this;
     }
 
@@ -89,6 +123,41 @@ public class JrpcBootstrap {
      * Start the service provider.
      */
     public void start() {
+        EventLoopGroup boss = new NioEventLoopGroup(2);
+        EventLoopGroup worker = new NioEventLoopGroup(10);
+        try {
+            // create server bootstrap
+            ServerBootstrap serverBootstrap = new ServerBootstrap();
+            serverBootstrap = serverBootstrap.group(boss, worker)
+                    .channel(NioServerSocketChannel.class)
+                    .childHandler(new ChannelInitializer<SocketChannel>() {
+                        @Override
+                        protected void initChannel(SocketChannel socketChannel) throws Exception {
+                            // core logic
+                            socketChannel.pipeline().addLast(new SimpleChannelInboundHandler<>() {
+                                @Override
+                                protected void channelRead0(ChannelHandlerContext channelHandlerContext, Object msg) throws Exception {
+                                    ByteBuf byteBuf = (ByteBuf) msg;
+                                    log.info("Received data:{}", byteBuf.toString(Charset.defaultCharset()));
+
+                                    channelHandlerContext.channel().writeAndFlush(Unpooled.copiedBuffer("jrpc--hello".getBytes()));
+
+                                }
+                            });
+                        }
+                    });
+            ChannelFuture channelFuture = serverBootstrap.bind(port).sync();
+            channelFuture.channel().closeFuture().sync();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                boss.shutdownGracefully().sync();
+                worker.shutdownGracefully().sync();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
 
@@ -97,6 +166,7 @@ public class JrpcBootstrap {
      */
 
     public JrpcBootstrap reference(ReferenceConfig<?> reference) {
+        reference.setRegistry(registry);
         return this;
     }
 
