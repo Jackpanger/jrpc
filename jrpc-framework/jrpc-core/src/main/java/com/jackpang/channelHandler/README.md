@@ -14,9 +14,8 @@
     	1. Payload (interface name, method name, parameter list, return type))
     
     pipeline valid -> packet outBound
-    ---> first handler(out)(convert object to msg packet)
-    ---> second handler(out)(serialization)
-    ---> third handler(out)(compression)
+    ---> first handler log
+    ---> second handler encoder(out)(convert object to msg packet, serialization, compression)
 2. Server Provider
 
     receive Packet by Netty

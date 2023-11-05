@@ -20,7 +20,7 @@ public interface Registry {
 
     /**
      * Lookup the service from the registration center.
-     * @param name service name
+     * @param serviceName service name
      * @return service address
      */
     InetSocketAddress lookup(String serviceName);

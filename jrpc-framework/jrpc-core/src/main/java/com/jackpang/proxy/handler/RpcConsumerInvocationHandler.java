@@ -5,6 +5,8 @@ import com.jackpang.NettyBootstrapInitializer;
 import com.jackpang.discovery.Registry;
 import com.jackpang.exceptions.DiscoveryException;
 import com.jackpang.exceptions.NetworkException;
+import com.jackpang.transport.message.JrpcRequest;
+import com.jackpang.transport.message.RequestPayload;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
@@ -51,13 +53,28 @@ public class RpcConsumerInvocationHandler implements InvocationHandler {
         // 2. get a channel from the cache
         Channel channel = getAvailableChannel(address);
         // channel = NettyBootstrapInitializer.getBootstrap().connect(address).await().channel();
-        if (log.isDebugEnabled()){
+        if (log.isDebugEnabled()) {
             log.info("get a channel with address:{}, sending data..", address);
         }
 
         /*
          * ===================make a request packet===================
          */
+        RequestPayload requestPayload = RequestPayload.builder()
+                .interfaceName(interfaceRef.getName())
+                .methodName(method.getName())
+                .parametersType(method.getParameterTypes())
+                .parametersValue(args)
+                .returnType(method.getReturnType())
+                .build();
+        // todo compressType, serializeType, requestType
+        JrpcRequest jrpcRequest = JrpcRequest.builder()
+                .requestId(1L)
+                .compressType((byte) 1)
+                .requestType((byte) 1)
+                .serializeType((byte) 1)
+                .requestPayload(requestPayload)
+                .build();
 
         /*
          * ====================sync====================
@@ -75,7 +92,9 @@ public class RpcConsumerInvocationHandler implements InvocationHandler {
         // 4. write the package to the channel
         CompletableFuture<Object> completableFuture = new CompletableFuture<>();
         JrpcBootstrap.PENDING_REQUEST.put(1L, completableFuture);
-        channel.writeAndFlush(Unpooled.copiedBuffer("hello".getBytes())).addListener((ChannelFutureListener) promise -> {
+        // write request into pipeline to do outbound operation
+        // jrpcRequest -> binary packet
+        channel.writeAndFlush(jrpcRequest).addListener((ChannelFutureListener) promise -> {
 //                if (promise.isSuccess()) {
 //                    completableFuture.complete(promise.getNow());}
             if (!promise.isSuccess()) {
@@ -88,6 +107,7 @@ public class RpcConsumerInvocationHandler implements InvocationHandler {
 
     /**
      * get a channel from the cache by address
+     *
      * @param address service address
      * @return channel
      */
