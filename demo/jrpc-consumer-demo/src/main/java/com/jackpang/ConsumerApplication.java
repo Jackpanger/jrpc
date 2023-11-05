@@ -10,7 +10,7 @@ import lombok.extern.slf4j.Slf4j;
  * version: 1.0
  */
 @Slf4j
-public class CunsumerApplication {
+public class ConsumerApplication {
     public static void main(String[] args) {
         // use referenceConfig to encapsulate the service
         // there must be a template method in the reference.

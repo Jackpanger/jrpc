@@ -14,15 +14,15 @@
     	1. Payload (interface name, method name, parameter list, return type))
     
     pipeline valid -> packet outBound
-    ---> first handler log
+    ---> first handler in/out log
     ---> second handler encoder(out)(convert object to msg packet, serialization, compression)
 2. Server Provider
 
     receive Packet by Netty
     pipeline valid -> packet inBound
-    ---> first handler(in)(decompression)
-    ---> second handler(in)(deserialization)
-    ---> third handler(in)(convert msg packet to object)
+    ---> first handler in/out log
+    ---> second handler decoder (in) (decompression,deserialization, convert msg packet to jrpcRequest)
+    ---> third handler(in) jrpcRequest -> jrpcResponse
 3. Call the function to get the result
 4. Server Provider
 

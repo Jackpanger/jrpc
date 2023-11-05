@@ -36,7 +36,7 @@ public class JrpcMessageEncoder extends MessageToByteEncoder<JrpcRequest> {
         // 2B header length
         byteBuf.writeShort(MessageFormatConstant.HEADER_LENGTH);
         // 4B full packet length
-        byteBuf.writerIndex(byteBuf.writerIndex() + MessageFormatConstant.FULL_LENGTH);
+        byteBuf.writerIndex(byteBuf.writerIndex() + MessageFormatConstant.FULL_FIELD_LENGTH);
         // 1B RequestType
         byteBuf.writeByte(jrpcRequest.getRequestType());
         // 1B SerializeType

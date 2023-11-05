@@ -52,7 +52,6 @@ public class RpcConsumerInvocationHandler implements InvocationHandler {
         // Use netty to send data to server and get the result
         // 2. get a channel from the cache
         Channel channel = getAvailableChannel(address);
-        // channel = NettyBootstrapInitializer.getBootstrap().connect(address).await().channel();
         if (log.isDebugEnabled()) {
             log.info("get a channel with address:{}, sending data..", address);
         }
@@ -115,6 +114,7 @@ public class RpcConsumerInvocationHandler implements InvocationHandler {
         // 1. try to get a channel from the cache
         Channel channel = JrpcBootstrap.CHANNEL_CACHE.get(address);
         if (channel == null) {
+            // channel = NettyBootstrapInitializer.getBootstrap().connect(address).await().channel();
             // block until the channel is available
             CompletableFuture<Channel> channelFuture = new CompletableFuture<>();
             NettyBootstrapInitializer.getBootstrap().

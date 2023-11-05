@@ -1,5 +1,7 @@
 package com.jackpang;
 
+import com.jackpang.channelHandler.handler.JrpcMessageDecoder;
+import com.jackpang.channelHandler.handler.MethodCallHandler;
 import com.jackpang.discovery.Registry;
 import com.jackpang.discovery.RegistryConfig;
 import io.netty.bootstrap.ServerBootstrap;
@@ -9,6 +11,7 @@ import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.logging.LoggingHandler;
 import lombok.extern.slf4j.Slf4j;
 
 import java.net.InetSocketAddress;
@@ -43,7 +46,7 @@ public class JrpcBootstrap {
     public static final Map<InetSocketAddress, Channel> CHANNEL_CACHE = new ConcurrentHashMap<>(16);
 
     // record the service published by the provider
-    private static final Map<String, ServiceConfig<?>> SERVERS_LIST = new ConcurrentHashMap<>(16);
+    public static final Map<String, ServiceConfig<?>> SERVERS_LIST = new ConcurrentHashMap<>(16);
 
     // global pending completable future
     public static final Map<Long, CompletableFuture<Object>> PENDING_REQUEST = new ConcurrentHashMap<>(128);
@@ -134,16 +137,9 @@ public class JrpcBootstrap {
                         @Override
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
                             // core logic
-                            socketChannel.pipeline().addLast(new SimpleChannelInboundHandler<>() {
-                                @Override
-                                protected void channelRead0(ChannelHandlerContext channelHandlerContext, Object msg) throws Exception {
-                                    ByteBuf byteBuf = (ByteBuf) msg;
-                                    log.info("Received data:{}", byteBuf.toString(Charset.defaultCharset()));
-
-                                    channelHandlerContext.channel().writeAndFlush(Unpooled.copiedBuffer("jrpc--hello".getBytes()));
-
-                                }
-                            });
+                            socketChannel.pipeline().addLast(new LoggingHandler())
+                                    .addLast(new JrpcMessageDecoder())
+                                    .addLast(new MethodCallHandler());
                         }
                     });
             ChannelFuture channelFuture = serverBootstrap.bind(port).sync();
