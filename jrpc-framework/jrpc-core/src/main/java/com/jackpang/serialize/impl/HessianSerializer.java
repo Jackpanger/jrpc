@@ -1,5 +1,7 @@
 package com.jackpang.serialize.impl;
 
+import com.caucho.hessian.io.Hessian2Input;
+import com.caucho.hessian.io.Hessian2Output;
 import com.jackpang.exceptions.SerializeException;
 import com.jackpang.serialize.Serializer;
 import lombok.extern.slf4j.Slf4j;
@@ -19,15 +21,17 @@ public class HessianSerializer implements Serializer {
         if (object == null) {
             return new byte[0];
         }
-        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-             ObjectOutputStream outputStream = new ObjectOutputStream(byteArrayOutputStream)) {
-            outputStream.writeObject(object);
-            if (log.isDebugEnabled()){
-                log.debug("Serialization object[{}] success", object);
+
+        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+            Hessian2Output hessian2Output = new Hessian2Output(byteArrayOutputStream);
+            hessian2Output.writeObject(object);
+            hessian2Output.flush();
+            if (log.isDebugEnabled()) {
+                log.debug("Serialization by hessian object[{}] success", object);
             }
             return byteArrayOutputStream.toByteArray();
         } catch (IOException e) {
-            log.error("Serialization object[{}] error:{}", object, e.getMessage());
+            log.error("Serialization by hessian object[{}] error:{}", object, e.getMessage());
             throw new SerializeException(e);
         }
     }
@@ -37,13 +41,14 @@ public class HessianSerializer implements Serializer {
         // deserialization
         try (ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
              ObjectInputStream ois = new ObjectInputStream(bis)) {
-            Object object =  ois.readObject();
-            if (log.isDebugEnabled()){
-                log.debug("Class[{}] deserialization success", clazz);
+            Hessian2Input hessian2Input = new Hessian2Input(ois);
+            Object object = hessian2Input.readObject();
+            if (log.isDebugEnabled()) {
+                log.debug("Class[{}] deserialization by hessian success", clazz);
             }
             return (T) object;
-        } catch (IOException | ClassNotFoundException e) {
-            log.error("Class[{}] deserialization error:{}", clazz, e.getMessage());
+        } catch (IOException e) {
+            log.error("Class[{}] deserialization by hessian error:{}", clazz, e.getMessage());
             throw new SerializeException(e);
         }
     }
