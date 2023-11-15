@@ -39,9 +39,8 @@ public class HessianSerializer implements Serializer {
     @Override
     public <T> T deserialize(byte[] bytes, Class<T> clazz) {
         // deserialization
-        try (ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-             ObjectInputStream ois = new ObjectInputStream(bis)) {
-            Hessian2Input hessian2Input = new Hessian2Input(ois);
+        try (ByteArrayInputStream bis = new ByteArrayInputStream(bytes)) {
+            Hessian2Input hessian2Input = new Hessian2Input(bis);
             Object object = hessian2Input.readObject();
             if (log.isDebugEnabled()) {
                 log.debug("Class[{}] deserialization by hessian success", clazz);

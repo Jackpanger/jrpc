@@ -64,7 +64,7 @@
                 <version>${logback.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.alibaba</groupId>
+                <groupId>com.alibaba.fastjson2</groupId>
                 <artifactId>fastjson2</artifactId>
                 <version>${fastjson2.version}</version>
             </dependency>
