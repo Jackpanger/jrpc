@@ -9,6 +9,7 @@ import java.io.*;
 
 /**
  * description: JsonSerializer
+ * not support xxx.class
  * date: 11/5/23 5:21 PM
  * author: jinhao_pang
  * version: 1.0
@@ -22,7 +23,7 @@ public class JsonSerializer implements Serializer {
         }
         byte[] jsonBytes = JSON.toJSONBytes(object);
         if (log.isDebugEnabled()) {
-            log.debug("Serialization object[{}] success", object);
+            log.debug("Serialization object[{}] by json success", object);
         }
         return jsonBytes;
     }
@@ -32,7 +33,7 @@ public class JsonSerializer implements Serializer {
         // deserialization
         T object = JSON.parseObject(bytes, clazz);
         if (log.isDebugEnabled()) {
-            log.debug("Class[{}] deserialization success", clazz);
+            log.debug("Class[{}] deserialization by json success", clazz);
         }
         return object;
     }
