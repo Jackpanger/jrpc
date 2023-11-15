@@ -2,7 +2,9 @@ package com.jackpang.channelHandler.handler;
 
 import com.jackpang.JrpcBootstrap;
 import com.jackpang.ServiceConfig;
+import com.jackpang.enumeration.RespCode;
 import com.jackpang.transport.message.JrpcRequest;
+import com.jackpang.transport.message.JrpcResponse;
 import com.jackpang.transport.message.RequestPayload;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -24,11 +26,22 @@ public class MethodCallHandler extends SimpleChannelInboundHandler<JrpcRequest> 
         // 1. Get payload from JrpcRequest
         RequestPayload requestPayload = jrpcRequest.getRequestPayload();
         // 2. Call the corresponding method
-        Object object = callTargetMethod(requestPayload);
+        Object result = callTargetMethod(requestPayload);
+        if (log.isDebugEnabled()) {
+            log.debug("Call method[{}] in service[{}] success", requestPayload.getMethodName(), requestPayload.getInterfaceName());
+        }
         // 3. Encapsulate the return value into JrpcResponse
+        JrpcResponse jrpcResponse = new JrpcResponse();
+
+        jrpcResponse.setCode(RespCode.SUCCESS.getCode());
+         jrpcResponse.setRequestId(jrpcRequest.getRequestId());
+        jrpcResponse.setBody(result);
+        jrpcResponse.setCompressType((jrpcRequest.getCompressType()));
+        jrpcResponse.setSerializeType(jrpcRequest.getSerializeType());
+
 
         // 4. Write JrpcResponse to the channel
-        channelHandlerContext.channel().writeAndFlush(object);
+        channelHandlerContext.channel().writeAndFlush(jrpcResponse);
     }
 
     private Object callTargetMethod(RequestPayload requestPayload) {
@@ -48,7 +61,7 @@ public class MethodCallHandler extends SimpleChannelInboundHandler<JrpcRequest> 
             Method method = aClass.getMethod(methodName, parametersType);
             returnValue = method.invoke(refImpl, parametersValue);
         } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-            log.error("call method[{}] in service[{}] error", methodName, interfaceName, e);
+            log.error("Call method[{}] in service[{}] error", methodName, interfaceName, e);
             throw new RuntimeException(e);
         }
         return returnValue;

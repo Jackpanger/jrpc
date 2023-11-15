@@ -1,6 +1,7 @@
 package com.jackpang.channelHandler;
 
-import com.jackpang.channelHandler.handler.JrpcMessageEncoder;
+import com.jackpang.channelHandler.handler.JrpcRequestEncoder;
+import com.jackpang.channelHandler.handler.JrpcResponseDecoder;
 import com.jackpang.channelHandler.handler.MySimpleChannelInboundHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
@@ -18,7 +19,10 @@ public class ConsumerChannelInitializer extends ChannelInitializer<SocketChannel
     protected void initChannel(SocketChannel socketChannel) throws Exception {
         socketChannel.pipeline().addLast(new LoggingHandler(LogLevel.DEBUG))
                 // message encoder
-                .addLast(new JrpcMessageEncoder())
+                .addLast(new JrpcRequestEncoder())
+                // message inbound decoder
+                .addLast(new JrpcResponseDecoder())
+                // result handler
                 .addLast(new MySimpleChannelInboundHandler());
     }
 }

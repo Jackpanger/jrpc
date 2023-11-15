@@ -1,5 +1,8 @@
 package com.jackpang.channelHandler.handler;
 
+import com.jackpang.enumeration.RequestType;
+import com.jackpang.serialize.Serializer;
+import com.jackpang.serialize.SerializerFactory;
 import com.jackpang.transport.message.JrpcRequest;
 import com.jackpang.transport.message.MessageFormatConstant;
 import com.jackpang.transport.message.RequestPayload;
@@ -19,8 +22,8 @@ import java.io.ObjectInputStream;
  * version: 1.0
  */
 @Slf4j
-public class JrpcMessageDecoder extends LengthFieldBasedFrameDecoder {
-    public JrpcMessageDecoder() {
+public class JrpcRequestDecoder extends LengthFieldBasedFrameDecoder {
+    public JrpcRequestDecoder() {
         super(
                 // max frame length
                 MessageFormatConstant.MAX_FRAME_LENGTH,
@@ -79,7 +82,8 @@ public class JrpcMessageDecoder extends LengthFieldBasedFrameDecoder {
         jrpcRequest.setSerializeType(serializeType);
         jrpcRequest.setRequestType(requestType);
 
-        if (requestType == 2)
+        // directly return: heartbeat request
+        if (requestType == RequestType.HEARTBEAT.getId())
             return jrpcRequest;
         int payload = fullLength - header;
         byte[] payLoad = new byte[payload];
@@ -88,15 +92,13 @@ public class JrpcMessageDecoder extends LengthFieldBasedFrameDecoder {
         // decompression
 
         // deserialization
-        try (ByteArrayInputStream bis = new ByteArrayInputStream(payLoad);
-             ObjectInputStream ois = new ObjectInputStream(bis)) {
-            RequestPayload requestPayload = (RequestPayload) ois.readObject();
-            jrpcRequest.setRequestPayload(requestPayload);
-        } catch (IOException | ClassNotFoundException e) {
-            log.error("request[{}] deserialization error:{}", requestId, e.getMessage());
-            throw new RuntimeException(e);
-        }
 
+        Serializer serializer = SerializerFactory.getSerializer(serializeType).getSerializer();
+        RequestPayload requestPayload = serializer.deserialize(payLoad, RequestPayload.class);
+        jrpcRequest.setRequestPayload(requestPayload);
+        if (log.isDebugEnabled()) {
+            log.debug("Request:{} finish packet decode in the server", jrpcRequest.getRequestId());
+        }
 
         return jrpcRequest;
     }

@@ -1,14 +1,16 @@
 package com.jackpang.channelHandler.handler;
 
+import com.jackpang.JrpcBootstrap;
+import com.jackpang.serialize.Serializer;
+import com.jackpang.serialize.SerializerFactory;
+import com.jackpang.serialize.SerializerWrapper;
 import com.jackpang.transport.message.JrpcRequest;
 import com.jackpang.transport.message.MessageFormatConstant;
-import com.jackpang.transport.message.RequestPayload;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.*;
 
 /**
  * 4bytes magic number --> jrpc.getBytes()
@@ -26,7 +28,7 @@ import java.io.*;
  * version: 1.0
  */
 @Slf4j
-public class JrpcMessageEncoder extends MessageToByteEncoder<JrpcRequest> {
+public class JrpcRequestEncoder extends MessageToByteEncoder<JrpcRequest> {
     @Override
     protected void encode(ChannelHandlerContext channelHandlerContext, JrpcRequest jrpcRequest, ByteBuf byteBuf) throws Exception {
         // 4bytes magic number
@@ -45,26 +47,41 @@ public class JrpcMessageEncoder extends MessageToByteEncoder<JrpcRequest> {
         byteBuf.writeByte(jrpcRequest.getCompressType());
         // 8B RequestId
         byteBuf.writeLong(jrpcRequest.getRequestId());
-        // body
-        byte[] bodyBytes = getBodyBytes(jrpcRequest.getRequestPayload());
+        // if it is a heartbeat request, then there is no body.
+//        if (jrpcRequest.getRequestType() == RequestType.HEARTBEAT.getId()) {
+//            // store the index of the writer
+//            int writerIndex = byteBuf.writerIndex();
+//            byteBuf.writerIndex(MessageFormatConstant.MAGIC_NUMBER.length
+//                    +MessageFormatConstant.VERSION_LENGTH+
+//                    MessageFormatConstant.HEADER_FIELD_LENGTH).writeInt(MessageFormatConstant.HEADER_LENGTH);
+//            // restore the index of the writer
+//            byteBuf.writerIndex(writerIndex);
+//            return;
+//        }
+        // write into requestPayload
+        // 1 serialize requestPayload based on the configured serialization method
+        //
+        Serializer serializer = SerializerFactory.getSerializer(JrpcBootstrap.SERIALIZE_TYPE).getSerializer();
+        byte[] bodyBytes = serializer.serialize(jrpcRequest.getRequestPayload());
+
+        // 2. Compress the serialized requestPayload based on the configured compression method
+
+
+
+
         byteBuf.writeBytes(bodyBytes);
         // store the index of the writer
         int writerIndex = byteBuf.writerIndex();
-        byteBuf.writerIndex(7).writeInt(MessageFormatConstant.HEADER_LENGTH + bodyBytes.length);
+        byteBuf.writerIndex(MessageFormatConstant.MAGIC_NUMBER.length
+        +MessageFormatConstant.VERSION_LENGTH+
+                MessageFormatConstant.HEADER_FIELD_LENGTH).writeInt(MessageFormatConstant.HEADER_LENGTH + bodyBytes.length);
         // restore the index of the writer
         byteBuf.writerIndex(writerIndex);
 
-    }
-
-    private byte[] getBodyBytes(RequestPayload requestPayload) {
-        try {
-            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-            ObjectOutputStream outputStream = new ObjectOutputStream(byteArrayOutputStream);
-            outputStream.writeObject(requestPayload);
-            return byteArrayOutputStream.toByteArray();
-        } catch (IOException e) {
-            log.error("Serialization error:{}", e.getMessage());
-            throw new RuntimeException(e);
+        if (log.isDebugEnabled()) {
+            log.debug("Request:{} finish packet encode in the client", jrpcRequest.getRequestId());
         }
     }
+
+
 }

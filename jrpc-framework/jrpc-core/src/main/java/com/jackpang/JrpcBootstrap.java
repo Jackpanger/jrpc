@@ -1,12 +1,11 @@
 package com.jackpang;
 
-import com.jackpang.channelHandler.handler.JrpcMessageDecoder;
+import com.jackpang.channelHandler.handler.JrpcRequestDecoder;
+import com.jackpang.channelHandler.handler.JrpcResponseEncoder;
 import com.jackpang.channelHandler.handler.MethodCallHandler;
 import com.jackpang.discovery.Registry;
 import com.jackpang.discovery.RegistryConfig;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -15,8 +14,6 @@ import io.netty.handler.logging.LoggingHandler;
 import lombok.extern.slf4j.Slf4j;
 
 import java.net.InetSocketAddress;
-import java.nio.charset.Charset;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -40,6 +37,8 @@ public class JrpcBootstrap {
     private RegistryConfig registryConfig;
     private ProtocolConfig protocolConfig;
     private int port = 8088;
+    public static final IdGenerator ID_GENERATOR = new IdGenerator(1L, 1L);
+    public static String SERIALIZE_TYPE = "jdk";
     private Registry registry;
 
     // connection cache
@@ -138,8 +137,9 @@ public class JrpcBootstrap {
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
                             // core logic
                             socketChannel.pipeline().addLast(new LoggingHandler())
-                                    .addLast(new JrpcMessageDecoder())
-                                    .addLast(new MethodCallHandler());
+                                    .addLast(new JrpcRequestDecoder())
+                                    .addLast(new MethodCallHandler())
+                                    .addLast(new JrpcResponseEncoder());
                         }
                     });
             ChannelFuture channelFuture = serverBootstrap.bind(port).sync();
@@ -166,4 +166,11 @@ public class JrpcBootstrap {
         return this;
     }
 
+    public JrpcBootstrap serialize(String serializeType) {
+        SERIALIZE_TYPE = serializeType;
+        if (log.isDebugEnabled()) {
+            log.debug("Current serializeType:[{}]", serializeType);
+        }
+        return this;
+    }
 }

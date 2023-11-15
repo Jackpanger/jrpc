@@ -1,10 +1,13 @@
 package com.jackpang.proxy.handler;
 
+import com.jackpang.IdGenerator;
 import com.jackpang.JrpcBootstrap;
 import com.jackpang.NettyBootstrapInitializer;
 import com.jackpang.discovery.Registry;
+import com.jackpang.enumeration.RequestType;
 import com.jackpang.exceptions.DiscoveryException;
 import com.jackpang.exceptions.NetworkException;
+import com.jackpang.serialize.SerializerFactory;
 import com.jackpang.transport.message.JrpcRequest;
 import com.jackpang.transport.message.RequestPayload;
 import io.netty.buffer.Unpooled;
@@ -19,6 +22,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import static com.jackpang.JrpcBootstrap.ID_GENERATOR;
 
 /**
  * description: encapsulate the proxy logic of the client side
@@ -68,10 +73,10 @@ public class RpcConsumerInvocationHandler implements InvocationHandler {
                 .build();
         // todo compressType, serializeType, requestType
         JrpcRequest jrpcRequest = JrpcRequest.builder()
-                .requestId(1L)
+                .requestId(ID_GENERATOR.getId())
                 .compressType((byte) 1)
-                .requestType((byte) 1)
-                .serializeType((byte) 1)
+                .requestType(RequestType.REQUEST.getId())
+                .serializeType(SerializerFactory.getSerializer(JrpcBootstrap.SERIALIZE_TYPE).getCode())
                 .requestPayload(requestPayload)
                 .build();
 
