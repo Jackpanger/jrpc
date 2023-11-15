@@ -3,6 +3,7 @@ package com.jackpang.proxy.handler;
 import com.jackpang.IdGenerator;
 import com.jackpang.JrpcBootstrap;
 import com.jackpang.NettyBootstrapInitializer;
+import com.jackpang.compress.CompressorFactory;
 import com.jackpang.discovery.Registry;
 import com.jackpang.enumeration.RequestType;
 import com.jackpang.exceptions.DiscoveryException;
@@ -74,7 +75,7 @@ public class RpcConsumerInvocationHandler implements InvocationHandler {
         // todo compressType, serializeType, requestType
         JrpcRequest jrpcRequest = JrpcRequest.builder()
                 .requestId(ID_GENERATOR.getId())
-                .compressType((byte) 1)
+                .compressType(CompressorFactory.getCompressor(JrpcBootstrap.COMPRESS_TYPE).getCode())
                 .requestType(RequestType.REQUEST.getId())
                 .serializeType(SerializerFactory.getSerializer(JrpcBootstrap.SERIALIZE_TYPE).getCode())
                 .requestPayload(requestPayload)

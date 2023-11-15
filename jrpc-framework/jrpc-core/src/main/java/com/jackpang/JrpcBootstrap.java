@@ -28,7 +28,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class JrpcBootstrap {
 
-
     // JrpcBootstrap is a singleton class, so each application has only one instance.
     private static final JrpcBootstrap jrpcBootstrap = new JrpcBootstrap();
 
@@ -39,6 +38,7 @@ public class JrpcBootstrap {
     private int port = 8088;
     public static final IdGenerator ID_GENERATOR = new IdGenerator(1L, 1L);
     public static String SERIALIZE_TYPE = "jdk";
+    public static String COMPRESS_TYPE = "gzip";
     private Registry registry;
 
     // connection cache
@@ -170,6 +170,14 @@ public class JrpcBootstrap {
         SERIALIZE_TYPE = serializeType;
         if (log.isDebugEnabled()) {
             log.debug("Current serializeType:[{}]", serializeType);
+        }
+        return this;
+    }
+
+    public JrpcBootstrap compress(String compressType) {
+        COMPRESS_TYPE = compressType;
+        if (log.isDebugEnabled()) {
+            log.debug("Current compressType:[{}]", compressType);
         }
         return this;
     }
