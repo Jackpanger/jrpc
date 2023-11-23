@@ -29,13 +29,10 @@ public class Configuration {
     private String appName = "default";
     // configuration for registry
     private RegistryConfig registryConfig = new RegistryConfig("zookeeper://127.0.0.1:2181");
-    // configuration for serialize protocol
-    private ProtocolConfig protocolConfig = new ProtocolConfig("jdk");
+
     // configuration for serialize and compress
     private String serializeType = "jdk";
-    private Serializer serializer = new JdkSerializer();
     private String compressType = "gzip";
-    private Compressor compressor = new GzipCompressor();
 
     // configuration for load balancer
     private LoadBalancer loadBalancer = new RoundRobinLoadBalancer();

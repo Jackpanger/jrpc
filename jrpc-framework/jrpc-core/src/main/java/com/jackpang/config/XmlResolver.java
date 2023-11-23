@@ -3,9 +3,11 @@ package com.jackpang.config;
 import com.jackpang.IdGenerator;
 import com.jackpang.ProtocolConfig;
 import com.jackpang.compress.Compressor;
+import com.jackpang.compress.CompressorFactory;
 import com.jackpang.discovery.RegistryConfig;
 import com.jackpang.loadBalancer.LoadBalancer;
 import com.jackpang.serialize.Serializer;
+import com.jackpang.serialize.SerializerFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -18,6 +20,7 @@ import javax.xml.xpath.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Objects;
 
 /**
  * description: XmlResolver
@@ -46,24 +49,36 @@ public class XmlResolver {
             configuration.setAppName(resolveAppName(xPath, doc));
             configuration.setIdGenerator(resolveIdGenerator(xPath, doc));
             configuration.setRegistryConfig(resolveRegistryConfig(xPath, doc));
+
+            ObjectWrapper<Compressor> compressorObjectWrapper = resolveCompressor(xPath, doc);
+            CompressorFactory.addCompressor(compressorObjectWrapper);
+
+            ObjectWrapper<Serializer> serializerObjectWrapper = resolveSerializer(xPath, doc);
+            SerializerFactory.addSerializer(serializerObjectWrapper);
+
             configuration.setCompressType(resolveCompressType(xPath, doc));
-            configuration.setCompressor(resolveCompressor(xPath, doc));
             configuration.setSerializeType(resolveSerializeType(xPath, doc));
-            configuration.setSerializer(resolveSerializer(xPath, doc));
+
+
             configuration.setLoadBalancer(resolveLoadBalancer(xPath, doc));
-            configuration.setProtocolConfig(new ProtocolConfig(configuration.getSerializeType()));
 
         } catch (ParserConfigurationException | IOException | SAXException e) {
             log.info("No related xml file or load configuration from xml error", e);
         }
     }
 
-    private Serializer resolveSerializer(XPath xPath, Document doc) {
-        return parseObject(xPath, doc, "/configuration/serializer", null);
+    private ObjectWrapper<Serializer> resolveSerializer(XPath xPath, Document doc) {
+        Serializer serializer = parseObject(xPath, doc, "/configuration/serializer", null);
+        Byte code = Byte.valueOf(Objects.requireNonNull(parseString(xPath, doc, "/configuration/serializer", "code")));
+        String name = parseString(xPath, doc, "/configuration/serializer", "name");
+        return new ObjectWrapper<>(code, name, serializer);
     }
 
-    private Compressor resolveCompressor(XPath xPath, Document doc) {
-        return parseObject(xPath, doc, "/configuration/compressor", null);
+    private ObjectWrapper<Compressor> resolveCompressor(XPath xPath, Document doc) {
+        Compressor compressor = parseObject(xPath, doc, "/configuration/compressor", null);
+        Byte code = Byte.valueOf(Objects.requireNonNull(parseString(xPath, doc, "/configuration/compressor", "code")));
+        String name = parseString(xPath, doc, "/configuration/compressor", "name");
+        return new ObjectWrapper<>(code, name, compressor);
     }
 
     private String resolveSerializeType(XPath xPath, Document doc) {

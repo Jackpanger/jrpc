@@ -27,7 +27,7 @@ public class ProviderApplication {
                 .application("first-jrpc-provider")
                 // configure registration centerF
                 .registry(new RegistryConfig("zookeeper://127.0.0.1:2181"))
-                .protocol(new ProtocolConfig("jdk"))
+                .serialize("jdk")
                 // publish service
 //                .publish(service)
                 .scan("com.jackpang")

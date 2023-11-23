@@ -100,19 +100,6 @@ public class JrpcBootstrap {
         return this;
     }
 
-    /**
-     * Configure the protocol.
-     *
-     * @param protocolConfig protocol configuration
-     * @return this JrpcBootstrap instance
-     */
-    public JrpcBootstrap protocol(ProtocolConfig protocolConfig) {
-        configuration.setProtocolConfig(protocolConfig);
-        if (log.isDebugEnabled()) {
-            log.debug("Current protocolConfig:{}", protocolConfig.toString() + "protocol");
-        }
-        return this;
-    }
 
     /*
      * -------------------API related to service provider-----------------------------
