@@ -17,7 +17,7 @@ public interface Registry {
      *
      * @param serviceConfig service configuration
      */
-    void register(ServiceConfig<?> serviceConfig);
+    void register(ServiceConfig serviceConfig);
 
     /**
      * Lookup the list of services from the registration center.

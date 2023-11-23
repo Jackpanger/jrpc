@@ -32,7 +32,7 @@ public class NacosRegistry extends AbstractRegistry {
     }
 
     @Override
-    public void register(ServiceConfig<?> service) {
+    public void register(ServiceConfig service) {
         String parentNode = Constant.BASE_PROVIDERS_PATH + "/" + service.getInterface().getName();
 
         ZookeeperUtils.createNode(zooKeeper, new ZookeeperNode(parentNode, null), null, CreateMode.PERSISTENT);

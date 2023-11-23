@@ -1,5 +1,6 @@
 package com.jackpang;
 
+import com.jackpang.annotation.JrpcApi;
 import com.jackpang.channelHandler.handler.JrpcRequestDecoder;
 import com.jackpang.channelHandler.handler.JrpcResponseEncoder;
 import com.jackpang.channelHandler.handler.MethodCallHandler;
@@ -7,8 +8,6 @@ import com.jackpang.core.HeartbeatDetector;
 import com.jackpang.discovery.Registry;
 import com.jackpang.discovery.RegistryConfig;
 import com.jackpang.loadBalancer.LoadBalancer;
-import com.jackpang.loadBalancer.impl.ConsistentHashLoadBalancer;
-import com.jackpang.loadBalancer.impl.MinimumResponseTimeLoadBalancer;
 import com.jackpang.loadBalancer.impl.RoundRobinLoadBalancer;
 import com.jackpang.transport.message.JrpcRequest;
 import io.netty.bootstrap.ServerBootstrap;
@@ -20,12 +19,17 @@ import io.netty.handler.logging.LoggingHandler;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.File;
+import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
+import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * description: JrpcBootStrap
@@ -61,7 +65,7 @@ public class JrpcBootstrap {
     public static final TreeMap<Long, Channel> ANSWER_TIME_CHANNEL_CACHE = new TreeMap<>();
 
     // record the service published by the provider
-    public static final Map<String, ServiceConfig<?>> SERVERS_LIST = new ConcurrentHashMap<>(16);
+    public static final Map<String, ServiceConfig> SERVERS_LIST = new ConcurrentHashMap<>(16);
 
     // global pending completable future
     public static final Map<Long, CompletableFuture<Object>> PENDING_REQUEST = new ConcurrentHashMap<>(128);
@@ -120,7 +124,7 @@ public class JrpcBootstrap {
      * @param service service to be published
      * @return this JrpcBootstrap instance
      */
-    public JrpcBootstrap publish(ServiceConfig<?> service) {
+    public JrpcBootstrap publish(ServiceConfig service) {
         // service node
         registry.register(service);
         SERVERS_LIST.put(service.getInterface().getName(), service);
@@ -133,7 +137,7 @@ public class JrpcBootstrap {
      * @param service service list to be published
      * @return this JrpcBootstrap instance
      */
-    public JrpcBootstrap publish(List<ServiceConfig<?>> service) {
+    public JrpcBootstrap publish(List<ServiceConfig> service) {
         service.forEach(this::publish);
         return this;
     }
@@ -200,5 +204,93 @@ public class JrpcBootstrap {
             log.debug("Current compressType:[{}]", compressType);
         }
         return this;
+    }
+
+    public JrpcBootstrap scan(String packageName) {
+        // scan the package name to get the services
+        List<String> classNames = getAllClassNames(packageName);
+        // get the service interfaces through reflection
+        List<Class<?>> classes = classNames.stream().map(className -> {
+            try {
+                return Class.forName(className);
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        }).filter(clazz -> clazz.getAnnotation(JrpcApi.class) != null).collect(Collectors.toList());
+        for (Class<?> clazz : classes) {
+            // get its interface
+            Class<?>[] interfaces = clazz.getInterfaces();
+            Object instance;
+            try {
+                instance = clazz.getConstructor().newInstance();
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
+                     NoSuchMethodException e) {
+                throw new RuntimeException(e);
+            }
+            for (Class<?> anInterface : interfaces) {
+                ServiceConfig serviceConfig = new ServiceConfig();
+                serviceConfig.setInterface(anInterface);
+                serviceConfig.setRef(instance);
+                if (log.isDebugEnabled()){
+                    log.debug("-------> scan finished already, serviceConfig:{} publish", anInterface);
+                }
+                // publish the services
+                publish(serviceConfig);
+            }
+
+
+        }
+        return this;
+    }
+
+    private List<String> getAllClassNames(String packageName) {
+        // 1. get absolute path through packageName
+        // com.jackpang.xxx.yyy-> E://xxx/xww/sss/com/jackpang/xxx/yyy
+        String basePath = packageName.replaceAll("\\.", "/");
+        URL url = ClassLoader.getSystemClassLoader().getResource(basePath);
+        if (url == null) {
+            throw new RuntimeException("package not found during scanning");
+        }
+        String absolutePath = url.getPath();
+        List<String> classNames = new ArrayList<>();
+        recursionFile(absolutePath, classNames, basePath);
+        return classNames;
+    }
+
+    private void recursionFile(String absolutePath, List<String> classNames, String basePath) {
+        // 1. get the file object
+        File file = new File(absolutePath);
+        // check if the file is a directory
+        if (file.isDirectory()) {
+            // find files in the directory
+            File[] children = file.listFiles(pathname -> pathname.isDirectory() || pathname.getPath().contains(".class"));
+            if (children == null) {
+                return;
+            }
+            for (File child : children) {
+                if (child.isDirectory()) {
+                    recursionFile(child.getAbsolutePath(), classNames, basePath);
+                } else {
+                    String name = getClassNameByAbsolutePath(child.getAbsolutePath(), basePath);
+                    classNames.add(name);
+                }
+            }
+
+        } else {
+            // file -> file name
+            String name = getClassNameByAbsolutePath(absolutePath, basePath);
+            classNames.add(name);
+        }
+    }
+
+    private String getClassNameByAbsolutePath(String absolutePath, String basePath) {
+        //Users/jack/IdeaProjects/starter/jrpc/jrpc/jrpc-framework/jrpc-core/target/classes/com/jackpang/serialize/SerializerWrapper.class
+        String fileName = absolutePath.substring(absolutePath.indexOf(basePath)).replaceAll("/", "\\.");
+        return fileName.substring(0, fileName.lastIndexOf(".class"));
+    }
+
+    public static void main(String[] args) {
+        List<String> allClassNames = JrpcBootstrap.getInstance().getAllClassNames("com.jackpang");
+        System.out.println(allClassNames);
     }
 }

@@ -5,20 +5,16 @@ import com.jackpang.JrpcBootstrap;
 import com.jackpang.ServiceConfig;
 import com.jackpang.discovery.AbstractRegistry;
 import com.jackpang.exceptions.DiscoveryException;
-import com.jackpang.exceptions.NetworkException;
 import com.jackpang.utils.NetUtils;
 import com.jackpang.utils.zookeeper.ZookeeperNode;
 import com.jackpang.utils.zookeeper.ZookeeperUtils;
 import com.jackpang.watch.UpAndDownWatcher;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 
 import java.net.InetSocketAddress;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * description: ZookeeperRegistry
@@ -39,7 +35,7 @@ public class ZookeeperRegistry extends AbstractRegistry {
     }
 
     @Override
-    public void register(ServiceConfig<?> service) {
+    public void register(ServiceConfig service) {
         String parentNode = Constant.BASE_PROVIDERS_PATH + "/" + service.getInterface().getName();
 
         ZookeeperUtils.createNode(zooKeeper, new ZookeeperNode(parentNode, null), null, CreateMode.PERSISTENT);

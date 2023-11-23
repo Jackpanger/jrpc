@@ -13,7 +13,7 @@ public class ProviderApplication {
     public static void main(String[] args) {
         // Provider needs to register service and start service
         // 1. Encapsulate the service that to be published.
-        ServiceConfig<HelloJrpc> service = new ServiceConfig<>();
+        ServiceConfig service = new ServiceConfig();
         service.setInterface(HelloJrpc.class);
         service.setRef(new HelloJrpcImpl());
         // 2. Define registration center
@@ -27,9 +27,10 @@ public class ProviderApplication {
                 .application("first-jrpc-provider")
                 // configure registration centerF
                 .registry(new RegistryConfig("zookeeper://127.0.0.1:2181"))
-                .protocol(new ProtocolConfig("jdk")) // todo no use
+                .protocol(new ProtocolConfig("jdk"))
                 // publish service
-                .publish(service)
+//                .publish(service)
+                .scan("com.jackpang")
                 // start service
                 .start();
     }

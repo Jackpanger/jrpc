@@ -1,6 +1,6 @@
 package com.jackpang.impl;
 
-import com.jackpang.HelloJrpc;
+import com.jackpang.HelloJrpc2;
 import com.jackpang.annotation.JrpcApi;
 
 /**
@@ -10,9 +10,9 @@ import com.jackpang.annotation.JrpcApi;
  * version: 1.0
  */
 @JrpcApi
-public class HelloJrpcImpl implements HelloJrpc {
+public class HelloJrpcImpl2 implements HelloJrpc2 {
     @Override
     public String sayHi(String msg) {
-        return "Hi, consumer:" + msg + " !";
+        return "Hi, consumer222:" + msg + " !";
     }
 }

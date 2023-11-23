@@ -55,7 +55,7 @@ public class MethodCallHandler extends SimpleChannelInboundHandler<JrpcRequest> 
         Object[] parametersValue = requestPayload.getParametersValue();
 
         // Get the corresponding service object
-        ServiceConfig<?> serviceConfig = JrpcBootstrap.SERVERS_LIST.get(interfaceName);
+        ServiceConfig serviceConfig = JrpcBootstrap.SERVERS_LIST.get(interfaceName);
         Object refImpl = serviceConfig.getRef();
         // Call the corresponding method by reflection
         // 1. get method object 2. invoke
