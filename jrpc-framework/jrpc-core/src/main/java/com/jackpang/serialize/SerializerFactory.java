@@ -3,6 +3,7 @@ package com.jackpang.serialize;
 import com.jackpang.serialize.impl.HessianSerializer;
 import com.jackpang.serialize.impl.JdkSerializer;
 import com.jackpang.serialize.impl.JsonSerializer;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -13,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * author: jinhao_pang
  * version: 1.0
  */
+@Slf4j
 public class SerializerFactory {
     private final static Map<String, SerializerWrapper> SERIALIZER_CACHE = new ConcurrentHashMap<>();
     private final static Map<Byte, SerializerWrapper> SERIALIZER_CACHE_CODE = new ConcurrentHashMap<>();
@@ -30,10 +32,25 @@ public class SerializerFactory {
 
     }
     public static SerializerWrapper getSerializer(String serializeType) {
-       return SERIALIZER_CACHE.get(serializeType);
+
+        SerializerWrapper serializerWrapper = SERIALIZER_CACHE.get(serializeType);
+        if (serializerWrapper == null) {
+            if (log.isDebugEnabled()){
+                log.error("Serializer not found, use default jdk serializer");
+            }
+            return SERIALIZER_CACHE.get("jdk");
+        }
+        return serializerWrapper;
     }
 
     public static SerializerWrapper getSerializer(byte serializeCode) {
-        return SERIALIZER_CACHE_CODE.get(serializeCode);
+        SerializerWrapper serializerWrapper = SERIALIZER_CACHE_CODE.get(serializeCode);
+        if (serializerWrapper == null) {
+            if (log.isDebugEnabled()){
+                log.error("Serializer not found, use default jdk serializer");
+            }
+            return SERIALIZER_CACHE_CODE.get((byte) 1);
+        }
+        return serializerWrapper;
     }
 }

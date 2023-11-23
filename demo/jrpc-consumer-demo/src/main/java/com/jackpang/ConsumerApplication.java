@@ -1,5 +1,6 @@
 package com.jackpang;
 
+import com.jackpang.core.HeartbeatDetector;
 import com.jackpang.discovery.RegistryConfig;
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,10 +31,19 @@ public class ConsumerApplication {
                 .serialize("hessian")
                 .reference(reference);
 
-        // get a proxy object
-        HelloJrpc helloJrpc = reference.get();
-        String sayHi = helloJrpc.sayHi("hi there!");
-        log.info("result:{}", sayHi);
+        while (true){
+            try {
+                Thread.sleep(10000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            // get a proxy object
+            HelloJrpc helloJrpc = reference.get();
+            for (int i = 0; i < 10; i++) {
+                String sayHi = helloJrpc.sayHi("hi there!");
+                log.info("result:{}", sayHi);
+            }
+        }
 
     }
 }

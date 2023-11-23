@@ -1,6 +1,7 @@
 package com.jackpang.discovery.impl;
 
 import com.jackpang.Constant;
+import com.jackpang.JrpcBootstrap;
 import com.jackpang.ServiceConfig;
 import com.jackpang.discovery.AbstractRegistry;
 import com.jackpang.exceptions.DiscoveryException;
@@ -8,8 +9,11 @@ import com.jackpang.exceptions.NetworkException;
 import com.jackpang.utils.NetUtils;
 import com.jackpang.utils.zookeeper.ZookeeperNode;
 import com.jackpang.utils.zookeeper.ZookeeperUtils;
+import com.jackpang.watch.UpAndDownWatcher;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 
 import java.net.InetSocketAddress;
@@ -39,7 +43,7 @@ public class ZookeeperRegistry extends AbstractRegistry {
         String parentNode = Constant.BASE_PROVIDERS_PATH + "/" + service.getInterface().getName();
 
         ZookeeperUtils.createNode(zooKeeper, new ZookeeperNode(parentNode, null), null, CreateMode.PERSISTENT);
-        String node = parentNode + "/" + NetUtils.getIp() + ":" + 8088;
+        String node = parentNode + "/" + NetUtils.getIp() + ":" + JrpcBootstrap.PORT;
         ZookeeperUtils.createNode(zooKeeper, new ZookeeperNode(node, null), null, CreateMode.EPHEMERAL);
 
 
@@ -50,11 +54,11 @@ public class ZookeeperRegistry extends AbstractRegistry {
     }
 
     @Override
-    public InetSocketAddress lookup(String serviceName) {
+    public List<InetSocketAddress> lookup(String serviceName) {
         // 1. get the service node
         String serviceNode = Constant.BASE_PROVIDERS_PATH + "/" + serviceName;
         // 2. get the children node
-        List<String> children = ZookeeperUtils.getChildren(zooKeeper, serviceNode, null);
+        List<String> children = ZookeeperUtils.getChildren(zooKeeper, serviceNode, new UpAndDownWatcher());
         List<InetSocketAddress> list = children.stream().map(ipString -> {
             String[] ipPort = ipString.split(":");
             return new InetSocketAddress(ipPort[0], Integer.parseInt(ipPort[1]));
@@ -62,6 +66,6 @@ public class ZookeeperRegistry extends AbstractRegistry {
         if (list.isEmpty()) {
             throw new DiscoveryException("No service available");
         }
-        return list.get(0);
+        return list;
     }
 }

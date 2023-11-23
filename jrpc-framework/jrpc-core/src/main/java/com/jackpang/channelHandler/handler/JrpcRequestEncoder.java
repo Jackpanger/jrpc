@@ -1,6 +1,8 @@
 package com.jackpang.channelHandler.handler;
 
 import com.jackpang.JrpcBootstrap;
+import com.jackpang.compress.Compressor;
+import com.jackpang.compress.CompressorFactory;
 import com.jackpang.serialize.Serializer;
 import com.jackpang.serialize.SerializerFactory;
 import com.jackpang.serialize.SerializerWrapper;
@@ -47,6 +49,8 @@ public class JrpcRequestEncoder extends MessageToByteEncoder<JrpcRequest> {
         byteBuf.writeByte(jrpcRequest.getCompressType());
         // 8B RequestId
         byteBuf.writeLong(jrpcRequest.getRequestId());
+        // 8B timestamp
+        byteBuf.writeLong(jrpcRequest.getTimeStamp());
         // if it is a heartbeat request, then there is no body.
 //        if (jrpcRequest.getRequestType() == RequestType.HEARTBEAT.getId()) {
 //            // store the index of the writer
@@ -59,21 +63,23 @@ public class JrpcRequestEncoder extends MessageToByteEncoder<JrpcRequest> {
 //            return;
 //        }
         // write into requestPayload
-        // 1 serialize requestPayload based on the configured serialization method
-        //
-        Serializer serializer = SerializerFactory.getSerializer(JrpcBootstrap.SERIALIZE_TYPE).getSerializer();
-        byte[] bodyBytes = serializer.serialize(jrpcRequest.getRequestPayload());
+        byte[] bodyBytes = new byte[0];
+        if (jrpcRequest.getRequestPayload() != null) {
+            // 1 serialize requestPayload based on the configured serialization method
 
-        // 2. Compress the serialized requestPayload based on the configured compression method
+            Serializer serializer = SerializerFactory.getSerializer(JrpcBootstrap.SERIALIZE_TYPE).getSerializer();
+            bodyBytes = serializer.serialize(jrpcRequest.getRequestPayload());
 
+            // 2. Compress the serialized requestPayload based on the configured compression method
 
-
-
-        byteBuf.writeBytes(bodyBytes);
+            Compressor compressor = CompressorFactory.getCompressor(JrpcBootstrap.COMPRESS_TYPE).getCompressor();
+            bodyBytes = compressor.compress(bodyBytes);
+            byteBuf.writeBytes(bodyBytes);
+        }
         // store the index of the writer
         int writerIndex = byteBuf.writerIndex();
         byteBuf.writerIndex(MessageFormatConstant.MAGIC_NUMBER.length
-        +MessageFormatConstant.VERSION_LENGTH+
+                + MessageFormatConstant.VERSION_LENGTH +
                 MessageFormatConstant.HEADER_FIELD_LENGTH).writeInt(MessageFormatConstant.HEADER_LENGTH + bodyBytes.length);
         // restore the index of the writer
         byteBuf.writerIndex(writerIndex);

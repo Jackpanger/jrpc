@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
+import java.util.Date;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -49,18 +50,6 @@ public class RpcConsumerInvocationHandler implements InvocationHandler {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        // 1. discover the service
-        InetSocketAddress address = registry.lookup(interfaceRef.getName());
-        if (log.isDebugEnabled()) {
-            log.debug("Get the service {} address:{}", interfaceRef.getName(), address);
-        }
-
-        // Use netty to send data to server and get the result
-        // 2. get a channel from the cache
-        Channel channel = getAvailableChannel(address);
-        if (log.isDebugEnabled()) {
-            log.info("get a channel with address:{}, sending data..", address);
-        }
 
         /*
          * ===================make a request packet===================
@@ -72,14 +61,31 @@ public class RpcConsumerInvocationHandler implements InvocationHandler {
                 .parametersValue(args)
                 .returnType(method.getReturnType())
                 .build();
-        // todo compressType, serializeType, requestType
+
         JrpcRequest jrpcRequest = JrpcRequest.builder()
                 .requestId(ID_GENERATOR.getId())
                 .compressType(CompressorFactory.getCompressor(JrpcBootstrap.COMPRESS_TYPE).getCode())
                 .requestType(RequestType.REQUEST.getId())
                 .serializeType(SerializerFactory.getSerializer(JrpcBootstrap.SERIALIZE_TYPE).getCode())
+                .timeStamp(new Date().getTime())
                 .requestPayload(requestPayload)
                 .build();
+
+        JrpcBootstrap.REQUEST_THREAD_LOCAL.set(jrpcRequest);
+
+        // 1. discover the service
+        InetSocketAddress address = JrpcBootstrap.LOAD_BALANCER.selectServerAddress(interfaceRef.getName());
+        if (log.isDebugEnabled()) {
+            log.debug("Get the service {} address:{}", interfaceRef.getName(), address);
+        }
+
+        // Use netty to send data to server and get the result
+        // 2. get a channel from the cache
+        Channel channel = getAvailableChannel(address);
+        if (log.isDebugEnabled()) {
+            log.info("get a channel with address:{}, sending data..", address);
+        }
+
 
         /*
          * ====================sync====================
@@ -96,7 +102,7 @@ public class RpcConsumerInvocationHandler implements InvocationHandler {
          */
         // 4. write the package to the channel
         CompletableFuture<Object> completableFuture = new CompletableFuture<>();
-        JrpcBootstrap.PENDING_REQUEST.put(1L, completableFuture);
+        JrpcBootstrap.PENDING_REQUEST.put(jrpcRequest.getRequestId(), completableFuture);
         // write request into pipeline to do outbound operation
         // jrpcRequest -> binary packet
         channel.writeAndFlush(jrpcRequest).addListener((ChannelFutureListener) promise -> {
@@ -106,6 +112,11 @@ public class RpcConsumerInvocationHandler implements InvocationHandler {
                 completableFuture.completeExceptionally(promise.cause());
             }
         });
+
+        // clear the thread local
+        JrpcBootstrap.REQUEST_THREAD_LOCAL.remove();
+
+
         // block until the completableFuture is handled
         return completableFuture.get(10, TimeUnit.SECONDS);
     }

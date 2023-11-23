@@ -3,19 +3,27 @@ package com.jackpang;
 import com.jackpang.channelHandler.handler.JrpcRequestDecoder;
 import com.jackpang.channelHandler.handler.JrpcResponseEncoder;
 import com.jackpang.channelHandler.handler.MethodCallHandler;
+import com.jackpang.core.HeartbeatDetector;
 import com.jackpang.discovery.Registry;
 import com.jackpang.discovery.RegistryConfig;
+import com.jackpang.loadBalancer.LoadBalancer;
+import com.jackpang.loadBalancer.impl.ConsistentHashLoadBalancer;
+import com.jackpang.loadBalancer.impl.MinimumResponseTimeLoadBalancer;
+import com.jackpang.loadBalancer.impl.RoundRobinLoadBalancer;
+import com.jackpang.transport.message.JrpcRequest;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.logging.LoggingHandler;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -35,14 +43,22 @@ public class JrpcBootstrap {
     private String appName = "default";
     private RegistryConfig registryConfig;
     private ProtocolConfig protocolConfig;
-    private int port = 8088;
+
+
+    public static final int PORT = 8089;
+    public static LoadBalancer LOAD_BALANCER;
     public static final IdGenerator ID_GENERATOR = new IdGenerator(1L, 1L);
     public static String SERIALIZE_TYPE = "jdk";
     public static String COMPRESS_TYPE = "gzip";
+
+    public static final ThreadLocal<JrpcRequest> REQUEST_THREAD_LOCAL = new ThreadLocal<>();
+
+    @Getter
     private Registry registry;
 
     // connection cache
     public static final Map<InetSocketAddress, Channel> CHANNEL_CACHE = new ConcurrentHashMap<>(16);
+    public static final TreeMap<Long, Channel> ANSWER_TIME_CHANNEL_CACHE = new TreeMap<>();
 
     // record the service published by the provider
     public static final Map<String, ServiceConfig<?>> SERVERS_LIST = new ConcurrentHashMap<>(16);
@@ -76,6 +92,7 @@ public class JrpcBootstrap {
      */
     public JrpcBootstrap registry(RegistryConfig registryConfig) {
         this.registry = registryConfig.getRegistry();
+        JrpcBootstrap.LOAD_BALANCER = new RoundRobinLoadBalancer();
         return this;
     }
 
@@ -142,7 +159,7 @@ public class JrpcBootstrap {
                                     .addLast(new JrpcResponseEncoder());
                         }
                     });
-            ChannelFuture channelFuture = serverBootstrap.bind(port).sync();
+            ChannelFuture channelFuture = serverBootstrap.bind(PORT).sync();
             channelFuture.channel().closeFuture().sync();
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -162,6 +179,9 @@ public class JrpcBootstrap {
      */
 
     public JrpcBootstrap reference(ReferenceConfig<?> reference) {
+        // heartbeat detection
+        HeartbeatDetector.detect(reference.getInterface().getName());
+
         reference.setRegistry(registry);
         return this;
     }

@@ -3,6 +3,7 @@ package com.jackpang.discovery;
 import com.jackpang.ServiceConfig;
 
 import java.net.InetSocketAddress;
+import java.util.List;
 
 /**
  * description: Registry
@@ -19,9 +20,9 @@ public interface Registry {
     void register(ServiceConfig<?> serviceConfig);
 
     /**
-     * Lookup the service from the registration center.
+     * Lookup the list of services from the registration center.
      * @param serviceName service name
      * @return service address
      */
-    InetSocketAddress lookup(String serviceName);
+    List<InetSocketAddress> lookup(String serviceName);
 }

@@ -1,5 +1,7 @@
 package com.jackpang.channelHandler.handler;
 
+import com.jackpang.compress.Compressor;
+import com.jackpang.compress.CompressorFactory;
 import com.jackpang.serialize.Serializer;
 import com.jackpang.serialize.SerializerFactory;
 import com.jackpang.transport.message.JrpcRequest;
@@ -50,6 +52,8 @@ public class JrpcResponseEncoder extends MessageToByteEncoder<JrpcResponse> {
         byteBuf.writeByte(jrpcResponse.getCompressType());
         // 8B RequestId
         byteBuf.writeLong(jrpcResponse.getRequestId());
+        // 8B timestamp
+        byteBuf.writeLong(jrpcResponse.getTimeStamp());
         // if it is a heartbeat request, then there is no body.
 //        if (jrpcRequest.getRequestType() == RequestType.HEARTBEAT.getId()) {
 //            // store the index of the writer
@@ -61,14 +65,22 @@ public class JrpcResponseEncoder extends MessageToByteEncoder<JrpcResponse> {
 //            byteBuf.writerIndex(writerIndex);
 //            return;
 //        }
-        // body
-        Serializer serializer = SerializerFactory.getSerializer(jrpcResponse.getSerializeType()).getSerializer();
-        byte[] bodyBytes = serializer.serialize(jrpcResponse.getBody());
+        byte[] bodyBytes = new byte[0];
+        if (jrpcResponse.getBody() != null) {
+            // body serialize
+            Serializer serializer = SerializerFactory.getSerializer(jrpcResponse.getSerializeType()).getSerializer();
+            bodyBytes = serializer.serialize(jrpcResponse.getBody());
+
+            // compress
+            Compressor compressor = CompressorFactory.getCompressor(jrpcResponse.getCompressType()).getCompressor();
+            bodyBytes = compressor.compress(bodyBytes);
+        }
+
         byteBuf.writeBytes(bodyBytes);
         // store the index of the writer
         int writerIndex = byteBuf.writerIndex();
         byteBuf.writerIndex(MessageFormatConstant.MAGIC_NUMBER.length
-        +MessageFormatConstant.VERSION_LENGTH+
+                + MessageFormatConstant.VERSION_LENGTH +
                 MessageFormatConstant.HEADER_FIELD_LENGTH).writeInt(MessageFormatConstant.HEADER_LENGTH + bodyBytes.length);
         // restore the index of the writer
         byteBuf.writerIndex(writerIndex);

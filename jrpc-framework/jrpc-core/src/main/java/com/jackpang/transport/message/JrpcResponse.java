@@ -22,6 +22,8 @@ public class JrpcResponse {
     private byte compressType;
     // serialize type
     private byte serializeType;
+    // time stamp
+    private long timeStamp;
     // 1 success, 2 fail
     private byte code;
     // specific message body

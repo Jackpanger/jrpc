@@ -2,6 +2,7 @@ package com.jackpang.channelHandler.handler;
 
 import com.jackpang.JrpcBootstrap;
 import com.jackpang.ServiceConfig;
+import com.jackpang.enumeration.RequestType;
 import com.jackpang.enumeration.RespCode;
 import com.jackpang.transport.message.JrpcRequest;
 import com.jackpang.transport.message.JrpcResponse;
@@ -26,15 +27,18 @@ public class MethodCallHandler extends SimpleChannelInboundHandler<JrpcRequest> 
         // 1. Get payload from JrpcRequest
         RequestPayload requestPayload = jrpcRequest.getRequestPayload();
         // 2. Call the corresponding method
-        Object result = callTargetMethod(requestPayload);
-        if (log.isDebugEnabled()) {
-            log.debug("Call method[{}] in service[{}] success", requestPayload.getMethodName(), requestPayload.getInterfaceName());
+        Object result = null;
+        if (!(jrpcRequest.getRequestType()== RequestType.HEARTBEAT.getId())){
+            result = callTargetMethod(requestPayload);
+            if (log.isDebugEnabled()) {
+                log.debug("Call method[{}] in service[{}] success", requestPayload.getMethodName(), requestPayload.getInterfaceName());
+            }
         }
         // 3. Encapsulate the return value into JrpcResponse
         JrpcResponse jrpcResponse = new JrpcResponse();
 
         jrpcResponse.setCode(RespCode.SUCCESS.getCode());
-         jrpcResponse.setRequestId(jrpcRequest.getRequestId());
+        jrpcResponse.setRequestId(jrpcRequest.getRequestId());
         jrpcResponse.setBody(result);
         jrpcResponse.setCompressType((jrpcRequest.getCompressType()));
         jrpcResponse.setSerializeType(jrpcRequest.getSerializeType());

@@ -24,6 +24,8 @@ public class JrpcRequest {
     private byte compressType;
     // serialize type
     private byte serializeType;
+    // request time
+    private long timeStamp;
     // specific message body
     private RequestPayload requestPayload;
 

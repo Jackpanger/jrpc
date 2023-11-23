@@ -1,5 +1,7 @@
 package com.jackpang.channelHandler.handler;
 
+import com.jackpang.compress.Compressor;
+import com.jackpang.compress.CompressorFactory;
 import com.jackpang.enumeration.RequestType;
 import com.jackpang.serialize.Serializer;
 import com.jackpang.serialize.SerializerFactory;
@@ -74,14 +76,18 @@ public class JrpcResponseDecoder extends LengthFieldBasedFrameDecoder {
         byte serializeType = byteBuf.readByte();
         // read compress type
         byte compressType = byteBuf.readByte();
-        // rad request id
+        // read request id
         long requestId = byteBuf.readLong();
+        // read timestamp
+        long timestamp = byteBuf.readLong();
+
         // get body
         JrpcResponse jrpcResponse = new JrpcResponse();
         jrpcResponse.setRequestId(requestId);
         jrpcResponse.setCompressType(compressType);
         jrpcResponse.setSerializeType(serializeType);
         jrpcResponse.setCode(code);
+        jrpcResponse.setTimeStamp(timestamp);
 
         // directly return: heartbeat request
 //        if (requestType == RequestType.HEARTBEAT.getId())
@@ -90,12 +96,15 @@ public class JrpcResponseDecoder extends LengthFieldBasedFrameDecoder {
         byte[] body = new byte[bodyLength];
         byteBuf.readBytes(body);
 
-        // decompression
-
-        // deserialization
-        Serializer serializer = SerializerFactory.getSerializer(serializeType).getSerializer();
-        Object object = serializer.deserialize(body, Object.class);
-        jrpcResponse.setBody(object);
+        if (body.length > 0) {
+            // decompression
+            Compressor compressor = CompressorFactory.getCompressor(compressType).getCompressor();
+            body = compressor.decompress(body);
+            // deserialization
+            Serializer serializer = SerializerFactory.getSerializer(serializeType).getSerializer();
+            Object object = serializer.deserialize(body, Object.class);
+            jrpcResponse.setBody(object);
+        }
         if (log.isDebugEnabled()) {
             log.debug("response[{}] finish packet decode in the client", requestId);
         }

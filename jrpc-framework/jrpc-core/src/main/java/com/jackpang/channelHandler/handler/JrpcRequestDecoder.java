@@ -1,5 +1,7 @@
 package com.jackpang.channelHandler.handler;
 
+import com.jackpang.compress.Compressor;
+import com.jackpang.compress.CompressorFactory;
 import com.jackpang.enumeration.RequestType;
 import com.jackpang.serialize.Serializer;
 import com.jackpang.serialize.SerializerFactory;
@@ -14,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.util.Random;
 
 /**
  * description: frame decoder based on length field
@@ -40,6 +43,7 @@ public class JrpcRequestDecoder extends LengthFieldBasedFrameDecoder {
 
     @Override
     protected Object decode(ChannelHandlerContext ctx, ByteBuf in) throws Exception {
+        Thread.sleep(new Random().nextInt(50));
         Object decode = super.decode(ctx, in);
         if (decode instanceof ByteBuf byteBuf) {
             return decodeFrame(byteBuf);
@@ -73,14 +77,17 @@ public class JrpcRequestDecoder extends LengthFieldBasedFrameDecoder {
         byte serializeType = byteBuf.readByte();
         // read compress type
         byte compressType = byteBuf.readByte();
-        // rad request id
+        // read request id
         long requestId = byteBuf.readLong();
+        // read timestamp
+        long timestamp = byteBuf.readLong();
         // get body
         JrpcRequest jrpcRequest = new JrpcRequest();
         jrpcRequest.setRequestId(requestId);
         jrpcRequest.setCompressType(compressType);
         jrpcRequest.setSerializeType(serializeType);
         jrpcRequest.setRequestType(requestType);
+        jrpcRequest.setTimeStamp(timestamp);
 
         // directly return: heartbeat request
         if (requestType == RequestType.HEARTBEAT.getId())
@@ -89,13 +96,16 @@ public class JrpcRequestDecoder extends LengthFieldBasedFrameDecoder {
         byte[] payLoad = new byte[payload];
         byteBuf.readBytes(payLoad);
 
-        // decompression
+        if (payLoad.length > 0) {
+            // decompression
+            Compressor compressor = CompressorFactory.getCompressor(compressType).getCompressor();
+            payLoad = compressor.decompress(payLoad);
 
-        // deserialization
-
-        Serializer serializer = SerializerFactory.getSerializer(serializeType).getSerializer();
-        RequestPayload requestPayload = serializer.deserialize(payLoad, RequestPayload.class);
-        jrpcRequest.setRequestPayload(requestPayload);
+            // deserialization
+            Serializer serializer = SerializerFactory.getSerializer(serializeType).getSerializer();
+            RequestPayload requestPayload = serializer.deserialize(payLoad, RequestPayload.class);
+            jrpcRequest.setRequestPayload(requestPayload);
+        }
         if (log.isDebugEnabled()) {
             log.debug("Request:{} finish packet decode in the server", jrpcRequest.getRequestId());
         }
