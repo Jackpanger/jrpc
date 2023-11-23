@@ -1,13 +1,11 @@
-package com.jackpang;
+package com.jackpang.config;
 
+import com.jackpang.IdGenerator;
+import com.jackpang.ProtocolConfig;
 import com.jackpang.compress.Compressor;
-import com.jackpang.compress.impl.GzipCompressor;
 import com.jackpang.discovery.RegistryConfig;
 import com.jackpang.loadBalancer.LoadBalancer;
-import com.jackpang.loadBalancer.impl.RoundRobinLoadBalancer;
 import com.jackpang.serialize.Serializer;
-import com.jackpang.serialize.impl.JdkSerializer;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -22,49 +20,18 @@ import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 
 /**
- * Global configuration, code configuration -> xml configuration -> default configuration
- * date: 11/23/23 3:49 AM
+ * description: XmlResolver
+ * date: 11/23/23 8:19 AM
  * author: jinhao_pang
  * version: 1.0
  */
-@Data
 @Slf4j
-public class Configuration {
-
-    // configuration for port
-    private int port = 8089;
-
-    // configuration for application name
-    private String appName = "default";
-    // configuration for registry
-    private RegistryConfig registryConfig = new RegistryConfig("zookeeper://127.0.0.1:2181");
-    // configuration for serialize protocol
-    private ProtocolConfig protocolConfig = new ProtocolConfig("jdk");
-    // configuration for serialize and compress
-    private String serializeType = "jdk";
-    private Serializer serializer = new JdkSerializer();
-    private String compressType = "gzip";
-    private Compressor compressor = new GzipCompressor();
-
-    // configuration for load balancer
-    private LoadBalancer loadBalancer = new RoundRobinLoadBalancer();
-
-    // configuration for id generator
-    private IdGenerator idGenerator = new IdGenerator(1L, 1L);
-
-
-    // read xml configuration
-
-    public Configuration() {
-        // read xml configuration
-        loadFromXml(this);
-    }
-
+public class XmlResolver {
     /**
      * load configuration from xml  not using dom4j
      * @param configuration configuration
      */
-    private void loadFromXml(Configuration configuration) {
+    public void loadFromXml(Configuration configuration) {
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             factory.setValidating(false);
@@ -84,7 +51,7 @@ public class Configuration {
             configuration.setSerializeType(resolveSerializeType(xPath, doc));
             configuration.setSerializer(resolveSerializer(xPath, doc));
             configuration.setLoadBalancer(resolveLoadBalancer(xPath, doc));
-            configuration.setProtocolConfig(new ProtocolConfig(this.getSerializeType()));
+            configuration.setProtocolConfig(new ProtocolConfig(configuration.getSerializeType()));
 
         } catch (ParserConfigurationException | IOException | SAXException e) {
             log.info("No related xml file or load configuration from xml error", e);
@@ -221,4 +188,5 @@ public class Configuration {
     public static void main(String[] args) {
         Configuration configuration = new Configuration();
     }
+
 }

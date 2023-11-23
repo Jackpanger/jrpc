@@ -2,7 +2,7 @@
 <!DOCTYPE configuration SYSTEM "http://www.jackpang.com/jrpc-config.dtd">
 <configuration>
     <serializer class="com.jackpang.serialize.impl.HessianSerializer" code="" name=""/>
-    <port>80</port>
+    <port>8088</port>
     <appName>jrpc-default-appName</appName>
 
     <!-- either one is ok-->

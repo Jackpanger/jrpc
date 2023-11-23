@@ -68,11 +68,11 @@ public class JrpcResponseEncoder extends MessageToByteEncoder<JrpcResponse> {
         byte[] bodyBytes = new byte[0];
         if (jrpcResponse.getBody() != null) {
             // body serialize
-            Serializer serializer = SerializerFactory.getSerializer(jrpcResponse.getSerializeType()).getSerializer();
+            Serializer serializer = SerializerFactory.getSerializer(jrpcResponse.getSerializeType()).getImpl();
             bodyBytes = serializer.serialize(jrpcResponse.getBody());
 
             // compress
-            Compressor compressor = CompressorFactory.getCompressor(jrpcResponse.getCompressType()).getCompressor();
+            Compressor compressor = CompressorFactory.getCompressor(jrpcResponse.getCompressType()).getImpl();
             bodyBytes = compressor.compress(bodyBytes);
         }
 

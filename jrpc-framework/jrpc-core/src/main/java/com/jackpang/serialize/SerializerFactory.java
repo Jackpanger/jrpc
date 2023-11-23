@@ -1,5 +1,6 @@
 package com.jackpang.serialize;
 
+import com.jackpang.config.ObjectWrapper;
 import com.jackpang.serialize.impl.HessianSerializer;
 import com.jackpang.serialize.impl.JdkSerializer;
 import com.jackpang.serialize.impl.JsonSerializer;
@@ -16,13 +17,13 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Slf4j
 public class SerializerFactory {
-    private final static Map<String, SerializerWrapper> SERIALIZER_CACHE = new ConcurrentHashMap<>();
-    private final static Map<Byte, SerializerWrapper> SERIALIZER_CACHE_CODE = new ConcurrentHashMap<>();
+    private final static Map<String, ObjectWrapper<Serializer>> SERIALIZER_CACHE = new ConcurrentHashMap<>();
+    private final static Map<Byte, ObjectWrapper<Serializer>> SERIALIZER_CACHE_CODE = new ConcurrentHashMap<>();
 
     static {
-        SerializerWrapper jdk = new SerializerWrapper((byte) 1, "jdk", new JdkSerializer());
-        SerializerWrapper json = new SerializerWrapper((byte) 2, "json", new JsonSerializer());
-        SerializerWrapper hessian = new SerializerWrapper((byte) 3, "hessian", new HessianSerializer());
+        ObjectWrapper<Serializer> jdk = new ObjectWrapper<>((byte) 1, "jdk", new JdkSerializer());
+        ObjectWrapper<Serializer> json = new ObjectWrapper<>((byte) 2, "json", new JsonSerializer());
+        ObjectWrapper<Serializer> hessian = new ObjectWrapper<>((byte) 3, "hessian", new HessianSerializer());
         SERIALIZER_CACHE.put("jdk", jdk);
         SERIALIZER_CACHE.put("json",json);
         SERIALIZER_CACHE.put("hessian",hessian);
@@ -31,9 +32,9 @@ public class SerializerFactory {
         SERIALIZER_CACHE_CODE.put((byte) 3, hessian);
 
     }
-    public static SerializerWrapper getSerializer(String serializeType) {
+    public static ObjectWrapper<Serializer> getSerializer(String serializeType) {
 
-        SerializerWrapper serializerWrapper = SERIALIZER_CACHE.get(serializeType);
+        ObjectWrapper<Serializer> serializerWrapper = SERIALIZER_CACHE.get(serializeType);
         if (serializerWrapper == null) {
             if (log.isDebugEnabled()){
                 log.error("Serializer not found, use default jdk serializer");
@@ -43,8 +44,8 @@ public class SerializerFactory {
         return serializerWrapper;
     }
 
-    public static SerializerWrapper getSerializer(byte serializeCode) {
-        SerializerWrapper serializerWrapper = SERIALIZER_CACHE_CODE.get(serializeCode);
+    public static ObjectWrapper<Serializer> getSerializer(byte serializeCode) {
+        ObjectWrapper<Serializer> serializerWrapper = SERIALIZER_CACHE_CODE.get(serializeCode);
         if (serializerWrapper == null) {
             if (log.isDebugEnabled()){
                 log.error("Serializer not found, use default jdk serializer");
@@ -52,5 +53,14 @@ public class SerializerFactory {
             return SERIALIZER_CACHE_CODE.get((byte) 1);
         }
         return serializerWrapper;
+    }
+
+    /**
+     * add serializer to cache
+     * @param serializerObjectWrapper
+     */
+    public static void addSerializer(ObjectWrapper<Serializer> serializerObjectWrapper) {
+        SERIALIZER_CACHE.put(serializerObjectWrapper.getName(), serializerObjectWrapper);
+        SERIALIZER_CACHE_CODE.put(serializerObjectWrapper.getCode(), serializerObjectWrapper);
     }
 }

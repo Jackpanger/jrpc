@@ -98,10 +98,10 @@ public class JrpcResponseDecoder extends LengthFieldBasedFrameDecoder {
 
         if (body.length > 0) {
             // decompression
-            Compressor compressor = CompressorFactory.getCompressor(compressType).getCompressor();
+            Compressor compressor = CompressorFactory.getCompressor(compressType).getImpl();
             body = compressor.decompress(body);
             // deserialization
-            Serializer serializer = SerializerFactory.getSerializer(serializeType).getSerializer();
+            Serializer serializer = SerializerFactory.getSerializer(serializeType).getImpl();
             Object object = serializer.deserialize(body, Object.class);
             jrpcResponse.setBody(object);
         }

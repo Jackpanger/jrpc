@@ -5,7 +5,6 @@ import com.jackpang.compress.Compressor;
 import com.jackpang.compress.CompressorFactory;
 import com.jackpang.serialize.Serializer;
 import com.jackpang.serialize.SerializerFactory;
-import com.jackpang.serialize.SerializerWrapper;
 import com.jackpang.transport.message.JrpcRequest;
 import com.jackpang.transport.message.MessageFormatConstant;
 import io.netty.buffer.ByteBuf;
@@ -67,12 +66,12 @@ public class JrpcRequestEncoder extends MessageToByteEncoder<JrpcRequest> {
         if (jrpcRequest.getRequestPayload() != null) {
             // 1 serialize requestPayload based on the configured serialization method
 
-            Serializer serializer = SerializerFactory.getSerializer(JrpcBootstrap.getInstance().getConfiguration().getSerializeType()).getSerializer();
+            Serializer serializer = SerializerFactory.getSerializer(JrpcBootstrap.getInstance().getConfiguration().getSerializeType()).getImpl();
             bodyBytes = serializer.serialize(jrpcRequest.getRequestPayload());
 
             // 2. Compress the serialized requestPayload based on the configured compression method
 
-            Compressor compressor = CompressorFactory.getCompressor(JrpcBootstrap.getInstance().getConfiguration().getCompressType()).getCompressor();
+            Compressor compressor = CompressorFactory.getCompressor(JrpcBootstrap.getInstance().getConfiguration().getCompressType()).getImpl();
             bodyBytes = compressor.compress(bodyBytes);
             byteBuf.writeBytes(bodyBytes);
         }

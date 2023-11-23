@@ -1,0 +1,2 @@
+1-jdk-com.jackpang.serialize.impl.JdkSerializer
+3-hessian-com.jackpang.serialize.impl.HessianSerializer
