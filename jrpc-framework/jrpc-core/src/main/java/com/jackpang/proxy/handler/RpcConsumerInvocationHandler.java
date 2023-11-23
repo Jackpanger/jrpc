@@ -1,6 +1,6 @@
 package com.jackpang.proxy.handler;
 
-import com.jackpang.IdGenerator;
+
 import com.jackpang.JrpcBootstrap;
 import com.jackpang.NettyBootstrapInitializer;
 import com.jackpang.compress.CompressorFactory;
@@ -11,7 +11,6 @@ import com.jackpang.exceptions.NetworkException;
 import com.jackpang.serialize.SerializerFactory;
 import com.jackpang.transport.message.JrpcRequest;
 import com.jackpang.transport.message.RequestPayload;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import lombok.extern.slf4j.Slf4j;
@@ -24,8 +23,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
-import static com.jackpang.JrpcBootstrap.ID_GENERATOR;
 
 /**
  * description: encapsulate the proxy logic of the client side
@@ -63,10 +60,10 @@ public class RpcConsumerInvocationHandler implements InvocationHandler {
                 .build();
 
         JrpcRequest jrpcRequest = JrpcRequest.builder()
-                .requestId(ID_GENERATOR.getId())
-                .compressType(CompressorFactory.getCompressor(JrpcBootstrap.COMPRESS_TYPE).getCode())
+                .requestId(JrpcBootstrap.getInstance().getConfiguration().getIdGenerator().getId())
+                .compressType(CompressorFactory.getCompressor(JrpcBootstrap.getInstance().getConfiguration().getCompressType()).getCode())
                 .requestType(RequestType.REQUEST.getId())
-                .serializeType(SerializerFactory.getSerializer(JrpcBootstrap.SERIALIZE_TYPE).getCode())
+                .serializeType(SerializerFactory.getSerializer(JrpcBootstrap.getInstance().getConfiguration().getSerializeType()).getCode())
                 .timeStamp(new Date().getTime())
                 .requestPayload(requestPayload)
                 .build();
@@ -74,7 +71,7 @@ public class RpcConsumerInvocationHandler implements InvocationHandler {
         JrpcBootstrap.REQUEST_THREAD_LOCAL.set(jrpcRequest);
 
         // 1. discover the service
-        InetSocketAddress address = JrpcBootstrap.LOAD_BALANCER.selectServerAddress(interfaceRef.getName());
+        InetSocketAddress address = JrpcBootstrap.getInstance().getConfiguration().getLoadBalancer().selectServerAddress(interfaceRef.getName());
         if (log.isDebugEnabled()) {
             log.debug("Get the service {} address:{}", interfaceRef.getName(), address);
         }

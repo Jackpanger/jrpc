@@ -39,7 +39,7 @@ public class ZookeeperRegistry extends AbstractRegistry {
         String parentNode = Constant.BASE_PROVIDERS_PATH + "/" + service.getInterface().getName();
 
         ZookeeperUtils.createNode(zooKeeper, new ZookeeperNode(parentNode, null), null, CreateMode.PERSISTENT);
-        String node = parentNode + "/" + NetUtils.getIp() + ":" + JrpcBootstrap.PORT;
+        String node = parentNode + "/" + NetUtils.getIp() + ":" + JrpcBootstrap.getInstance().getConfiguration().getPort();
         ZookeeperUtils.createNode(zooKeeper, new ZookeeperNode(node, null), null, CreateMode.EPHEMERAL);
 
 

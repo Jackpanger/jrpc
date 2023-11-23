@@ -43,22 +43,13 @@ public class JrpcBootstrap {
     // JrpcBootstrap is a singleton class, so each application has only one instance.
     private static final JrpcBootstrap jrpcBootstrap = new JrpcBootstrap();
 
-    // declare basic configuration
-    private String appName = "default";
-    private RegistryConfig registryConfig;
-    private ProtocolConfig protocolConfig;
-
-
-    public static final int PORT = 8089;
-    public static LoadBalancer LOAD_BALANCER;
-    public static final IdGenerator ID_GENERATOR = new IdGenerator(1L, 1L);
-    public static String SERIALIZE_TYPE = "jdk";
-    public static String COMPRESS_TYPE = "gzip";
-
-    public static final ThreadLocal<JrpcRequest> REQUEST_THREAD_LOCAL = new ThreadLocal<>();
-
+    // global configuration center
     @Getter
-    private Registry registry;
+    private Configuration configuration;
+
+
+    // store request object for each thread
+    public static final ThreadLocal<JrpcRequest> REQUEST_THREAD_LOCAL = new ThreadLocal<>();
 
     // connection cache
     public static final Map<InetSocketAddress, Channel> CHANNEL_CACHE = new ConcurrentHashMap<>(16);
@@ -72,6 +63,7 @@ public class JrpcBootstrap {
 
     private JrpcBootstrap() {
         // Initialization when constructing the bootstrap.
+        configuration = new Configuration();
     }
 
     public static JrpcBootstrap getInstance() {
@@ -85,7 +77,7 @@ public class JrpcBootstrap {
      * @return this JrpcBootstrap instance
      */
     public JrpcBootstrap application(String appName) {
-        this.appName = appName;
+        configuration.setAppName(appName);
         return this;
     }
 
@@ -95,8 +87,17 @@ public class JrpcBootstrap {
      * @return this JrpcBootstrap instance
      */
     public JrpcBootstrap registry(RegistryConfig registryConfig) {
-        this.registry = registryConfig.getRegistry();
-        JrpcBootstrap.LOAD_BALANCER = new RoundRobinLoadBalancer();
+        configuration.setRegistryConfig(registryConfig);
+        return this;
+    }
+
+    /**
+     * Configure the loadBalancer.
+     *
+     * @return this JrpcBootstrap instance
+     */
+    public JrpcBootstrap loadBalancer(LoadBalancer loadBalancer) {
+        configuration.setLoadBalancer(loadBalancer);
         return this;
     }
 
@@ -107,7 +108,7 @@ public class JrpcBootstrap {
      * @return this JrpcBootstrap instance
      */
     public JrpcBootstrap protocol(ProtocolConfig protocolConfig) {
-        this.protocolConfig = protocolConfig;
+        configuration.setProtocolConfig(protocolConfig);
         if (log.isDebugEnabled()) {
             log.debug("Current protocolConfig:{}", protocolConfig.toString() + "protocol");
         }
@@ -126,7 +127,7 @@ public class JrpcBootstrap {
      */
     public JrpcBootstrap publish(ServiceConfig service) {
         // service node
-        registry.register(service);
+        configuration.getRegistryConfig().getRegistry().register(service);
         SERVERS_LIST.put(service.getInterface().getName(), service);
         return this;
     }
@@ -163,7 +164,7 @@ public class JrpcBootstrap {
                                     .addLast(new JrpcResponseEncoder());
                         }
                     });
-            ChannelFuture channelFuture = serverBootstrap.bind(PORT).sync();
+            ChannelFuture channelFuture = serverBootstrap.bind(configuration.getPort()).sync();
             channelFuture.channel().closeFuture().sync();
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -186,12 +187,12 @@ public class JrpcBootstrap {
         // heartbeat detection
         HeartbeatDetector.detect(reference.getInterface().getName());
 
-        reference.setRegistry(registry);
+        reference.setRegistry(configuration.getRegistryConfig().getRegistry());
         return this;
     }
 
     public JrpcBootstrap serialize(String serializeType) {
-        SERIALIZE_TYPE = serializeType;
+        configuration.setSerializeType(serializeType);
         if (log.isDebugEnabled()) {
             log.debug("Current serializeType:[{}]", serializeType);
         }
@@ -199,7 +200,7 @@ public class JrpcBootstrap {
     }
 
     public JrpcBootstrap compress(String compressType) {
-        COMPRESS_TYPE = compressType;
+        configuration.setCompressType(compressType);
         if (log.isDebugEnabled()) {
             log.debug("Current compressType:[{}]", compressType);
         }

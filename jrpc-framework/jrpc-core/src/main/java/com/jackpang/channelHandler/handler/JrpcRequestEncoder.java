@@ -67,12 +67,12 @@ public class JrpcRequestEncoder extends MessageToByteEncoder<JrpcRequest> {
         if (jrpcRequest.getRequestPayload() != null) {
             // 1 serialize requestPayload based on the configured serialization method
 
-            Serializer serializer = SerializerFactory.getSerializer(JrpcBootstrap.SERIALIZE_TYPE).getSerializer();
+            Serializer serializer = SerializerFactory.getSerializer(JrpcBootstrap.getInstance().getConfiguration().getSerializeType()).getSerializer();
             bodyBytes = serializer.serialize(jrpcRequest.getRequestPayload());
 
             // 2. Compress the serialized requestPayload based on the configured compression method
 
-            Compressor compressor = CompressorFactory.getCompressor(JrpcBootstrap.COMPRESS_TYPE).getCompressor();
+            Compressor compressor = CompressorFactory.getCompressor(JrpcBootstrap.getInstance().getConfiguration().getCompressType()).getCompressor();
             bodyBytes = compressor.compress(bodyBytes);
             byteBuf.writeBytes(bodyBytes);
         }

@@ -30,7 +30,7 @@ public class UpAndDownWatcher implements Watcher {
                 log.debug("NodeChildrenChanged, node [{}] up or down, fetching latest nodes", watchedEvent.getPath());
             }
             String serviceName = getServiceName(watchedEvent.getPath());
-            Registry registry = JrpcBootstrap.getInstance().getRegistry();
+            Registry registry = JrpcBootstrap.getInstance().getConfiguration().getRegistryConfig().getRegistry();
             List<InetSocketAddress> addresses = registry.lookup(serviceName);
             addresses.forEach(address -> {
                 if (!JrpcBootstrap.CHANNEL_CACHE.containsKey(address)) {
@@ -55,7 +55,7 @@ public class UpAndDownWatcher implements Watcher {
             });
 
             // get loadBalancer and reload
-            LoadBalancer loadBalancer = JrpcBootstrap.LOAD_BALANCER;
+            LoadBalancer loadBalancer = JrpcBootstrap.getInstance().getConfiguration().getLoadBalancer();
             loadBalancer.reloadBalance(serviceName, addresses);
 
         }

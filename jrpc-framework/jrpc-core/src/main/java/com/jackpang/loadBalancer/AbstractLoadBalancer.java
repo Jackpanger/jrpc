@@ -22,7 +22,7 @@ public abstract class AbstractLoadBalancer implements LoadBalancer {
         Selector selector = cache.get(serviceName);
         if (selector == null) {
             // 2. if the selector is null, create a new one and put it into the cache
-            List<InetSocketAddress> serviceList = JrpcBootstrap.getInstance().getRegistry().lookup(serviceName);
+            List<InetSocketAddress> serviceList = JrpcBootstrap.getInstance().getConfiguration().getRegistryConfig().getRegistry().lookup(serviceName);
             selector = getSelector(serviceList);
             cache.put(serviceName, selector);
         }

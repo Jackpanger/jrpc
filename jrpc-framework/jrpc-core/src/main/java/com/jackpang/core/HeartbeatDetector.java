@@ -19,7 +19,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import static com.jackpang.JrpcBootstrap.ID_GENERATOR;
+
+import static com.jackpang.JrpcBootstrap.getInstance;
 
 /**
  * description: HeartbeatDetector
@@ -31,7 +32,7 @@ import static com.jackpang.JrpcBootstrap.ID_GENERATOR;
 public class HeartbeatDetector {
     public static void detect(String serviceName) {
         // fetch service list from registry center and establish connection
-        Registry registry = JrpcBootstrap.getInstance().getRegistry();
+        Registry registry = JrpcBootstrap.getInstance().getConfiguration().getRegistryConfig().getRegistry();
         List<InetSocketAddress> addresses = registry.lookup(serviceName);
         // cache the connection
         for (InetSocketAddress address : addresses) {
@@ -69,10 +70,10 @@ public class HeartbeatDetector {
                     long start = System.currentTimeMillis();
                     // construct a heartbeat request packet
                     JrpcRequest jrpcRequest = JrpcRequest.builder()
-                            .requestId(ID_GENERATOR.getId())
-                            .compressType(CompressorFactory.getCompressor(JrpcBootstrap.COMPRESS_TYPE).getCode())
+                            .requestId(getInstance().getConfiguration().getIdGenerator().getId())
+                            .compressType(CompressorFactory.getCompressor(getInstance().getConfiguration().getCompressType()).getCode())
                             .requestType(RequestType.HEARTBEAT.getId())
-                            .serializeType(SerializerFactory.getSerializer(JrpcBootstrap.SERIALIZE_TYPE).getCode())
+                            .serializeType(SerializerFactory.getSerializer(getInstance().getConfiguration().getSerializeType()).getCode())
                             .timeStamp(start)
                             .build();
                     // write the package to the channel
