@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration SYSTEM "http://www.jackpang.com/jrpc-config.dtd">
+<configuration>
+    <serializer class="com.jackpang.serialize.impl.HessianSerializer" code="" name=""/>
+    <port>80</port>
+    <appName>jrpc-default-appName</appName>
+
+    <!-- either one is ok-->
+    <serializeType type="jdk"/>
+    <serializer class="com.jackpang.serialize.impl.JdkSerializer" code="" name=""/>
+
+    <!-- either one is ok-->
+    <compressType type="gzip"/>
+    <compressor class="com.jackpang.compress.impl.GzipCompressor" code="" name=""/>
+
+    <registry url="zookeeper://127.0.0.1:2181"/>
+
+    <loadBalancer class="com.jackpang.loadBalancer.impl.RoundRobinLoadBalancer"/>
+    <loadBalancerType type="minimumResponseTime"/>
+
+    <idGenerator class="com.jackpang.IdGenerator"  MachineId="4" dataCenterId="2"/>
+
+</configuration>

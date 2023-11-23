@@ -207,6 +207,11 @@ public class JrpcBootstrap {
         return this;
     }
 
+    /**
+     * Scan the package name to get the service.
+     * @param packageName package name
+     * @return this JrpcBootstrap instance
+     */
     public JrpcBootstrap scan(String packageName) {
         // scan the package name to get the services
         List<String> classNames = getAllClassNames(packageName);
