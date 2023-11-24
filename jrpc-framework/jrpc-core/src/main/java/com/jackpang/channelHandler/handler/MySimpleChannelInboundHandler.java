@@ -3,7 +3,9 @@ package com.jackpang.channelHandler.handler;
 import com.jackpang.JrpcBootstrap;
 import com.jackpang.enumeration.RespCode;
 import com.jackpang.exceptions.ResponseException;
+import com.jackpang.loadBalancer.LoadBalancer;
 import com.jackpang.protection.CircuitBreaker;
+import com.jackpang.transport.message.JrpcRequest;
 import com.jackpang.transport.message.JrpcResponse;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
@@ -54,12 +56,24 @@ public class MySimpleChannelInboundHandler extends SimpleChannelInboundHandler<J
             if (log.isDebugEnabled()) {
                 log.debug("Request[{}] finish completableFuture, resp: {}", jrpcResponse.getRequestId(), returnValue);
             }
-        }else if (code == RespCode.SUCCESS_HEART_BEAT.getCode()) {
+        } else if (code == RespCode.SUCCESS_HEART_BEAT.getCode()) {
             // heartbeat response
             completableFuture.complete(null);
             if (log.isDebugEnabled()) {
                 log.debug("Request[{}] finish completableFuture, resp: {}", jrpcResponse.getRequestId(), code);
             }
+        } else if (code == RespCode.CLOSING.getCode()) {
+            // server is closing
+            completableFuture.complete(null);
+            if (log.isDebugEnabled()) {
+                log.debug("Request[{}] finish completableFuture, resp: {}", jrpcResponse.getRequestId(), code);
+            }
+            // reload balance
+            JrpcBootstrap.CHANNEL_CACHE.remove(socketAddress);
+            LoadBalancer loadBalancer = JrpcBootstrap.getInstance().getConfiguration().getLoadBalancer();
+            JrpcRequest jrpcRequest = JrpcBootstrap.REQUEST_THREAD_LOCAL.get();
+            loadBalancer.reloadBalance(jrpcRequest.getRequestPayload().getInterfaceName(), JrpcBootstrap.CHANNEL_CACHE.keySet().stream().toList());
+            throw new ResponseException(code, RespCode.CLOSING.getDesc());
         }
     }
 }

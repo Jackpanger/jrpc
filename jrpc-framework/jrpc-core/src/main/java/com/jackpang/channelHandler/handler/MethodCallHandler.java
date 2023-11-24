@@ -2,6 +2,7 @@ package com.jackpang.channelHandler.handler;
 
 import com.jackpang.JrpcBootstrap;
 import com.jackpang.ServiceConfig;
+import com.jackpang.core.ShutdownHolder;
 import com.jackpang.enumeration.RequestType;
 import com.jackpang.enumeration.RespCode;
 import com.jackpang.protection.RateLimiter;
@@ -29,14 +30,23 @@ import java.net.SocketAddress;
 public class MethodCallHandler extends SimpleChannelInboundHandler<JrpcRequest> {
     @Override
     protected void channelRead0(ChannelHandlerContext channelHandlerContext, JrpcRequest jrpcRequest) throws Exception {
+
         // Encapsulate the return value into JrpcResponse
         JrpcResponse jrpcResponse = new JrpcResponse();
         jrpcResponse.setRequestId(jrpcRequest.getRequestId());
         jrpcResponse.setCompressType((jrpcRequest.getCompressType()));
         jrpcResponse.setSerializeType(jrpcRequest.getSerializeType());
+        Channel channel = channelHandlerContext.channel();
+
+        if (ShutdownHolder.BAFFLE.get()) {
+            jrpcResponse.setCode(RespCode.CLOSING.getCode());
+            channel.writeAndFlush(jrpcResponse);
+            return;
+        }
+
+        ShutdownHolder.REQUEST_COUNTER.increment();
 
         // limit the number of requests per second
-        Channel channel = channelHandlerContext.channel();
         SocketAddress socketAddress = channel.remoteAddress();
         RateLimiter rateLimiter = JrpcBootstrap.getInstance().getConfiguration().getEveryIpRateLimiter().get(socketAddress);
         if (rateLimiter == null) {
@@ -74,6 +84,7 @@ public class MethodCallHandler extends SimpleChannelInboundHandler<JrpcRequest> 
         }
         // 4. Write JrpcResponse to the channel
         channel.writeAndFlush(jrpcResponse);
+        ShutdownHolder.REQUEST_COUNTER.decrement();
     }
 
     private Object callTargetMethod(RequestPayload requestPayload) {
