@@ -9,7 +9,7 @@ import com.jackpang.annotation.JrpcApi;
  * author: jinhao_pang
  * version: 1.0
  */
-@JrpcApi
+@JrpcApi(group = "primary")
 public class HelloJrpcImpl implements HelloJrpc {
     @Override
     public String sayHi(String msg) {

@@ -39,20 +39,25 @@ public class ZookeeperRegistry extends AbstractRegistry {
         String parentNode = Constant.BASE_PROVIDERS_PATH + "/" + service.getInterface().getName();
 
         ZookeeperUtils.createNode(zooKeeper, new ZookeeperNode(parentNode, null), null, CreateMode.PERSISTENT);
+
+        parentNode = parentNode + "/" + service.getGroup();
+        ZookeeperUtils.createNode(zooKeeper, new ZookeeperNode(parentNode, null), null, CreateMode.PERSISTENT);
+
+
         String node = parentNode + "/" + NetUtils.getIp() + ":" + JrpcBootstrap.getInstance().getConfiguration().getPort();
         ZookeeperUtils.createNode(zooKeeper, new ZookeeperNode(node, null), null, CreateMode.EPHEMERAL);
 
 
         if (log.isDebugEnabled()) {
-            log.debug("Service is registered:{}", service.toString());
+            log.debug("Service is registered:{}", service);
         }
 
     }
 
     @Override
-    public List<InetSocketAddress> lookup(String serviceName) {
+    public List<InetSocketAddress> lookup(String serviceName, String group) {
         // 1. get the service node
-        String serviceNode = Constant.BASE_PROVIDERS_PATH + "/" + serviceName;
+        String serviceNode = Constant.BASE_PROVIDERS_PATH + "/" + serviceName + "/" + group;
         // 2. get the children node
         List<String> children = ZookeeperUtils.getChildren(zooKeeper, serviceNode, new UpAndDownWatcher());
         List<InetSocketAddress> list = children.stream().map(ipString -> {

@@ -14,4 +14,6 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface JrpcApi {
+    // group name
+    String group() default "default";
 }

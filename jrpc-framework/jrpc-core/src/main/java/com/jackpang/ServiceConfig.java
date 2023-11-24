@@ -12,6 +12,8 @@ public class ServiceConfig {
     private Class<?> interfaceProvider;
     @Getter
     private Object ref;
+    @Getter
+    private String group;
 
     public Class<?> getInterface() {
         return interfaceProvider;
@@ -23,6 +25,10 @@ public class ServiceConfig {
 
     public void setRef(Object ref) {
         this.ref = ref;
+    }
+
+    public void setGroup(String group) {
+        this.group = group;
     }
 
 }

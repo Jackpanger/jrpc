@@ -29,6 +29,7 @@ public class ConsumerApplication {
                 .application("first-jrpc-consumer")
                 .registry(new RegistryConfig("zookeeper://127.0.0.1:2181"))
                 .serialize("hessian")
+                .group("primary")
                 .reference(reference);
 
         while (true){

@@ -12,6 +12,7 @@ import com.jackpang.protection.RateLimiter;
 import com.jackpang.protection.TokenBucketRateLimiter;
 import com.jackpang.serialize.Serializer;
 import com.jackpang.serialize.impl.JdkSerializer;
+import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
@@ -35,6 +36,9 @@ public class Configuration {
 
     // configuration for application name
     private String appName = "default";
+
+    // configuration for group information
+    private String group = "default";
     // configuration for registry
     private RegistryConfig registryConfig = new RegistryConfig("zookeeper://127.0.0.1:2181");
 

@@ -45,10 +45,12 @@ public class RpcConsumerInvocationHandler implements InvocationHandler {
     // registry center and interface
     private Registry registry;
     private Class<?> interfaceRef;
+    private String group;
 
-    public RpcConsumerInvocationHandler(Registry registry, Class<?> interfaceRef) {
+    public RpcConsumerInvocationHandler(Registry registry, Class<?> interfaceRef, String group) {
         this.registry = registry;
         this.interfaceRef = interfaceRef;
+        this.group = group;
     }
 
     @Override
@@ -91,7 +93,7 @@ public class RpcConsumerInvocationHandler implements InvocationHandler {
             JrpcBootstrap.REQUEST_THREAD_LOCAL.set(jrpcRequest);
 
             // 1. discover the service
-            InetSocketAddress address = JrpcBootstrap.getInstance().getConfiguration().getLoadBalancer().selectServerAddress(interfaceRef.getName());
+            InetSocketAddress address = JrpcBootstrap.getInstance().getConfiguration().getLoadBalancer().selectServerAddress(interfaceRef.getName(),group);
             if (log.isDebugEnabled()) {
                 log.debug("Get the service {} address:{}", interfaceRef.getName(), address);
             }

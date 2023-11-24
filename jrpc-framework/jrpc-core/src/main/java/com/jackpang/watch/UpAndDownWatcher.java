@@ -31,7 +31,7 @@ public class UpAndDownWatcher implements Watcher {
             }
             String serviceName = getServiceName(watchedEvent.getPath());
             Registry registry = JrpcBootstrap.getInstance().getConfiguration().getRegistryConfig().getRegistry();
-            List<InetSocketAddress> addresses = registry.lookup(serviceName);
+            List<InetSocketAddress> addresses = registry.lookup(serviceName, JrpcBootstrap.getInstance().getConfiguration().getGroup());
             addresses.forEach(address -> {
                 if (!JrpcBootstrap.CHANNEL_CACHE.containsKey(address)) {
                     Channel channel;

@@ -174,6 +174,7 @@ public class JrpcBootstrap {
         HeartbeatDetector.detect(reference.getInterface().getName());
 
         reference.setRegistry(configuration.getRegistryConfig().getRegistry());
+        reference.setGroup(this.getConfiguration().getGroup());
         return this;
     }
 
@@ -209,6 +210,8 @@ public class JrpcBootstrap {
                 throw new RuntimeException(e);
             }
         }).filter(clazz -> clazz.getAnnotation(JrpcApi.class) != null).collect(Collectors.toList());
+
+
         for (Class<?> clazz : classes) {
             // get its interface
             Class<?>[] interfaces = clazz.getInterfaces();
@@ -219,10 +222,17 @@ public class JrpcBootstrap {
                      NoSuchMethodException e) {
                 throw new RuntimeException(e);
             }
+
+            // get group information
+            JrpcApi jrpcApi = clazz.getAnnotation(JrpcApi.class);
+            String group = jrpcApi.group();
+
+
             for (Class<?> anInterface : interfaces) {
                 ServiceConfig serviceConfig = new ServiceConfig();
                 serviceConfig.setInterface(anInterface);
                 serviceConfig.setRef(instance);
+                serviceConfig.setGroup(group);
                 if (log.isDebugEnabled()){
                     log.debug("-------> scan finished already, serviceConfig:{} publish", anInterface);
                 }
@@ -284,5 +294,10 @@ public class JrpcBootstrap {
     public static void main(String[] args) {
         List<String> allClassNames = JrpcBootstrap.getInstance().getAllClassNames("com.jackpang");
         System.out.println(allClassNames);
+    }
+
+    public JrpcBootstrap group(String group) {
+        this.configuration.setGroup(group);
+        return this;
     }
 }

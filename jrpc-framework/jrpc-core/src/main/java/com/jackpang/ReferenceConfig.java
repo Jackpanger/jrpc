@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 public class ReferenceConfig<T> {
     private Class<T> interfaceRef;
     private Registry registry;
+    private String group;
 
     public void setRegistry(Registry registry) {
         this.registry = registry;
@@ -46,9 +47,13 @@ public class ReferenceConfig<T> {
     public T get() {
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
         Class[] classes = new Class[]{interfaceRef};
-        InvocationHandler invocationHandler = new RpcConsumerInvocationHandler(registry, interfaceRef);
+        InvocationHandler invocationHandler = new RpcConsumerInvocationHandler(registry, interfaceRef,group);
         // Use JDK dynamic proxy to generate proxy class
         Object helloProxy = Proxy.newProxyInstance(classLoader, classes, invocationHandler);
         return (T) helloProxy;
+    }
+
+    public void setGroup(String group) {
+        this.group = group;
     }
 }

@@ -33,7 +33,7 @@ public class HeartbeatDetector {
     public static void detect(String serviceName) {
         // fetch service list from registry center and establish connection
         Registry registry = JrpcBootstrap.getInstance().getConfiguration().getRegistryConfig().getRegistry();
-        List<InetSocketAddress> addresses = registry.lookup(serviceName);
+        List<InetSocketAddress> addresses = registry.lookup(serviceName, JrpcBootstrap.getInstance().getConfiguration().getGroup());
         // cache the connection
         for (InetSocketAddress address : addresses) {
             try {

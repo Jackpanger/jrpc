@@ -24,5 +24,5 @@ public interface Registry {
      * @param serviceName service name
      * @return service address
      */
-    List<InetSocketAddress> lookup(String serviceName);
+    List<InetSocketAddress> lookup(String serviceName, String group);
 }
