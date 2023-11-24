@@ -7,6 +7,11 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
     <artifactId>demo</artifactId>
+    <packaging>pom</packaging>
+    <modules>
+        <module>jrpc-springboot-provider</module>
+        <module>jrpc-springboot-consumer</module>
+    </modules>
     <dependencies>
         <dependency>
             <groupId>io.netty</groupId>

@@ -11,7 +11,8 @@ public enum RespCode {
     SUCCESS_HEART_BEAT((byte) 21, "heartBeat success"),
     RATE_LIMIT((byte) 31, "too many request, limit the number of requests per second"),
     FAIL((byte) 50, "method call error, service not found"),
-    RESOURCE_NOT_FOUND((byte) 44, "not found, client not found");
+    RESOURCE_NOT_FOUND((byte) 44, "not found, client not found"),
+    CLOSING((byte) 51, "server is closing");
 
     private byte code;
     private String desc;

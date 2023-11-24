@@ -6,6 +6,7 @@ import com.jackpang.channelHandler.handler.JrpcResponseEncoder;
 import com.jackpang.channelHandler.handler.MethodCallHandler;
 import com.jackpang.config.Configuration;
 import com.jackpang.core.HeartbeatDetector;
+import com.jackpang.core.JrpcShutdownHook;
 import com.jackpang.discovery.RegistryConfig;
 import com.jackpang.loadBalancer.LoadBalancer;
 import com.jackpang.transport.message.JrpcRequest;
@@ -133,6 +134,10 @@ public class JrpcBootstrap {
      * Start the service provider.
      */
     public void start() {
+        // register a hook to close the connection when the application exits
+        Runtime.getRuntime().addShutdownHook(new JrpcShutdownHook());
+
+
         EventLoopGroup boss = new NioEventLoopGroup(2);
         EventLoopGroup worker = new NioEventLoopGroup(10);
         try {
