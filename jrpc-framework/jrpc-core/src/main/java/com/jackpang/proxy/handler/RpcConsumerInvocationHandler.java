@@ -3,11 +3,13 @@ package com.jackpang.proxy.handler;
 
 import com.jackpang.JrpcBootstrap;
 import com.jackpang.NettyBootstrapInitializer;
+import com.jackpang.annotation.TryTimes;
 import com.jackpang.compress.CompressorFactory;
 import com.jackpang.discovery.Registry;
 import com.jackpang.enumeration.RequestType;
 import com.jackpang.exceptions.DiscoveryException;
 import com.jackpang.exceptions.NetworkException;
+import com.jackpang.protection.CircuitBreaker;
 import com.jackpang.serialize.SerializerFactory;
 import com.jackpang.transport.message.JrpcRequest;
 import com.jackpang.transport.message.RequestPayload;
@@ -18,7 +20,11 @@ import lombok.extern.slf4j.Slf4j;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.Date;
+import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -48,45 +54,79 @@ public class RpcConsumerInvocationHandler implements InvocationHandler {
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
 
-        /*
-         * ===================make a request packet===================
-         */
-        RequestPayload requestPayload = RequestPayload.builder()
-                .interfaceName(interfaceRef.getName())
-                .methodName(method.getName())
-                .parametersType(method.getParameterTypes())
-                .parametersValue(args)
-                .returnType(method.getReturnType())
-                .build();
 
-        JrpcRequest jrpcRequest = JrpcRequest.builder()
-                .requestId(JrpcBootstrap.getInstance().getConfiguration().getIdGenerator().getId())
-                .compressType(CompressorFactory.getCompressor(JrpcBootstrap.getInstance().getConfiguration().getCompressType()).getCode())
-                .requestType(RequestType.REQUEST.getId())
-                .serializeType(SerializerFactory.getSerializer(JrpcBootstrap.getInstance().getConfiguration().getSerializeType()).getCode())
-                .timeStamp(System.currentTimeMillis())
-                .requestPayload(requestPayload)
-                .build();
-
-        JrpcBootstrap.REQUEST_THREAD_LOCAL.set(jrpcRequest);
-
-        // 1. discover the service
-        InetSocketAddress address = JrpcBootstrap.getInstance().getConfiguration().getLoadBalancer().selectServerAddress(interfaceRef.getName());
-        if (log.isDebugEnabled()) {
-            log.debug("Get the service {} address:{}", interfaceRef.getName(), address);
+        // check if the method needs retry
+        TryTimes annotation = method.getAnnotation(TryTimes.class);
+        int tryTimes = 0;
+        int intervalTime = 0;
+        if (annotation != null) {
+            tryTimes = annotation.tryTimes();
+            intervalTime = annotation.intervalTime();
         }
 
-        // Use netty to send data to server and get the result
-        // 2. get a channel from the cache
-        Channel channel = getAvailableChannel(address);
-        if (log.isDebugEnabled()) {
-            log.info("get a channel with address:{}, sending data..", address);
-        }
+        while (true) {
+            // need retry when:
+            // 1. error 2. code is wrong
+
+            /*
+             * ===================make a request packet===================
+             */
+            RequestPayload requestPayload = RequestPayload.builder()
+                    .interfaceName(interfaceRef.getName())
+                    .methodName(method.getName())
+                    .parametersType(method.getParameterTypes())
+                    .parametersValue(args)
+                    .returnType(method.getReturnType())
+                    .build();
+
+            JrpcRequest jrpcRequest = JrpcRequest.builder()
+                    .requestId(JrpcBootstrap.getInstance().getConfiguration().getIdGenerator().getId())
+                    .compressType(CompressorFactory.getCompressor(JrpcBootstrap.getInstance().getConfiguration().getCompressType()).getCode())
+                    .requestType(RequestType.REQUEST.getId())
+                    .serializeType(SerializerFactory.getSerializer(JrpcBootstrap.getInstance().getConfiguration().getSerializeType()).getCode())
+                    .timeStamp(System.currentTimeMillis())
+                    .requestPayload(requestPayload)
+                    .build();
+
+            JrpcBootstrap.REQUEST_THREAD_LOCAL.set(jrpcRequest);
+
+            // 1. discover the service
+            InetSocketAddress address = JrpcBootstrap.getInstance().getConfiguration().getLoadBalancer().selectServerAddress(interfaceRef.getName());
+            if (log.isDebugEnabled()) {
+                log.debug("Get the service {} address:{}", interfaceRef.getName(), address);
+            }
+
+            // Use netty to send data to server and get the result
+            // 2. get a channel from the cache
+            Channel channel = getAvailableChannel(address);
+            if (log.isDebugEnabled()) {
+                log.info("get a channel with address:{}, sending data..", address);
+            }
+
+            // Get the circuit breaker from the address
+            Map<SocketAddress, CircuitBreaker> everyIpCircuitBreaker = JrpcBootstrap.getInstance().getConfiguration().getEveryIpCircuitBreaker();
+            CircuitBreaker circuitBreaker = everyIpCircuitBreaker.get(address);
+            if (circuitBreaker == null) {
+                circuitBreaker = new CircuitBreaker(10, 0.5f);
+                everyIpCircuitBreaker.put(address, circuitBreaker);
+            }
+            try {
+                if (circuitBreaker.isBreak()) {
+                    // reset the circuit breaker periodically
+                    Timer timer = new Timer();
+                    timer.schedule(new TimerTask() {
+                        @Override
+                        public void run() {
+                            everyIpCircuitBreaker.get(address).reset();
+                        }
+                    }, 3000);
+                    throw new RuntimeException("The service is not available, circuit breaker is open.");
+                }
 
 
-        /*
-         * ====================sync====================
-         */
+                /*
+                 * ====================sync====================
+                 */
 //            ChannelFuture channelFuture = channel.writeAndFlush(new Object()).await();
 //            if (channelFuture.isDone()){
 //                Object object = channelFuture.getNow();
@@ -94,28 +134,44 @@ public class RpcConsumerInvocationHandler implements InvocationHandler {
 //                Throwable cause = channelFuture.cause();
 //                throw new RuntimeException(cause);
 //            }
-        /*
-         * ====================async====================
-         */
-        // 4. write the package to the channel
-        CompletableFuture<Object> completableFuture = new CompletableFuture<>();
-        JrpcBootstrap.PENDING_REQUEST.put(jrpcRequest.getRequestId(), completableFuture);
-        // write request into pipeline to do outbound operation
-        // jrpcRequest -> binary packet
-        channel.writeAndFlush(jrpcRequest).addListener((ChannelFutureListener) promise -> {
+                /*
+                 * ====================async====================
+                 */
+                // 4. write the package to the channel
+                CompletableFuture<Object> completableFuture = new CompletableFuture<>();
+                JrpcBootstrap.PENDING_REQUEST.put(jrpcRequest.getRequestId(), completableFuture);
+                // write request into pipeline to do outbound operation
+                // jrpcRequest -> binary packet
+                channel.writeAndFlush(jrpcRequest).addListener((ChannelFutureListener) promise -> {
 //                if (promise.isSuccess()) {
 //                    completableFuture.complete(promise.getNow());}
-            if (!promise.isSuccess()) {
-                completableFuture.completeExceptionally(promise.cause());
+                    if (!promise.isSuccess()) {
+                        completableFuture.completeExceptionally(promise.cause());
+                    }
+                });
+
+                // clear the thread local
+                JrpcBootstrap.REQUEST_THREAD_LOCAL.remove();
+
+
+                // block until the completableFuture is handled
+                Object result = completableFuture.get(10, TimeUnit.SECONDS);
+                // record the success request
+                circuitBreaker.recordRequest();
+                return result;
+            } catch (Exception e) {
+                tryTimes--;
+                // record the error request
+                circuitBreaker.recordErrorRequest();
+                Thread.sleep(intervalTime);
+                if (tryTimes < 0) {
+                    log.error("Failed to send a request, tried {} times, error message: {}", tryTimes, e.getMessage());
+                    break;
+                }
+                log.error("Failed to send a request, retrying..", e);
             }
-        });
-
-        // clear the thread local
-        JrpcBootstrap.REQUEST_THREAD_LOCAL.remove();
-
-
-        // block until the completableFuture is handled
-        return completableFuture.get(10, TimeUnit.SECONDS);
+        }
+        throw new RuntimeException("Failed to send a request by method " + method.getName());
     }
 
     /**

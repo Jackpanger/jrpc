@@ -8,6 +8,11 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
     <artifactId>jrpc-api</artifactId>
-    <name>Archetype - jrpc-api</name>
-    <url>http://maven.apache.org</url>
+    <dependencies>
+        <dependency>
+            <groupId>com.jackpang</groupId>
+            <artifactId>jrpc-common</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
 </project>

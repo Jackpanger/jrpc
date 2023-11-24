@@ -1,5 +1,7 @@
 package com.jackpang;
 
+import com.jackpang.annotation.TryTimes;
+
 /**
  * description: com.jackpang.HelloJrpc
  * date: 11/3/23 9:55 PM
@@ -12,5 +14,6 @@ public interface HelloJrpc {
      * @param msg
      * @return
      */
+    @TryTimes()
     String sayHi(String msg);
 }

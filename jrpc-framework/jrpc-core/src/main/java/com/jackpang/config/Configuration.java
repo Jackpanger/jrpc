@@ -7,10 +7,18 @@ import com.jackpang.compress.impl.GzipCompressor;
 import com.jackpang.discovery.RegistryConfig;
 import com.jackpang.loadBalancer.LoadBalancer;
 import com.jackpang.loadBalancer.impl.RoundRobinLoadBalancer;
+import com.jackpang.protection.CircuitBreaker;
+import com.jackpang.protection.RateLimiter;
+import com.jackpang.protection.TokenBucketRateLimiter;
 import com.jackpang.serialize.Serializer;
 import com.jackpang.serialize.impl.JdkSerializer;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Global configuration, code configuration -> xml configuration -> default configuration
@@ -40,8 +48,10 @@ public class Configuration {
     // configuration for id generator
     private IdGenerator idGenerator = new IdGenerator(1L, 1L);
 
-
-    // read xml configuration
+    // configuration for each ip rate limiter
+    private Map<SocketAddress, RateLimiter> everyIpRateLimiter = new ConcurrentHashMap<>();
+    // configuration for each ip circuit breaker
+    private Map<SocketAddress, CircuitBreaker> everyIpCircuitBreaker = new ConcurrentHashMap<>();
 
     public Configuration() {
         // default configuration
